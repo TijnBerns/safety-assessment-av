@@ -5,48 +5,75 @@ from torch.utils.data import Dataset
 import torch
 from config import Config as cfg
 from torchmetrics import MeanSquaredError
+from typing import Tuple, List, Any
 
-from typing import Tuple, List
+from torch.distributions import MultivariateNormal, Normal
+
 
 class FeedForward(pl.LightningModule):
     def __init__(self, num_in, num_out, num_hidden, num_layers=0) -> None:
         super().__init__()
-        self.model = self._construct_net(num_in, num_out, num_hidden, num_layers)
+        self.model = self._construct_net(
+            num_in, num_out, num_hidden, num_layers)
         self.val_mse = MeanSquaredError()
+        self.test_mse = MeanSquaredError()
+        self.norm = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
 
     def _construct_net(self, num_in, num_out, num_hidden, num_layers=0):
         args = []
-        for _ in range(num_layers - 1):
-            args.extend([nn.Linear(num_hidden, num_hidden), nn.ReLU()])
-        return nn.Sequential(nn.Linear(num_in, num_hidden), nn.ReLU(), *args, nn.Linear(num_hidden, num_out))
+        for _ in range(num_layers):
+            args.extend([nn.Linear(num_hidden, num_hidden), nn.Sigmoid()])
+        return nn.Sequential(nn.Linear(num_in, num_hidden), nn.Sigmoid(), *args, nn.Linear(num_hidden, num_out))
 
-    def forward(self, x: torch.Tensor):
-        return self.model(x)
-    
-    def training_step(self, batch, batch_idx):
+    def forward(self, batch: torch.Tensor) -> torch.Tensor:
         x, y = batch
-        x = torch.reshape(x, (-1, 1))
-        y = torch.reshape(y, [-1,1])
-       
-        
-        y_hat = self.forward(x)
+        x = torch.reshape(x, [-1, 1])
+        y = torch.reshape(y, [-1, 1])
+        return self.model(x), y
+
+    def training_step(self, batch, batch_idx):
+        y_hat, y = self.forward(batch)
         loss = F.mse_loss(y_hat, y)
-        self.log('train_loss', loss)
+        self.log('train_se', loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
-        x = torch.reshape(x, (-1, 1))
-        y = torch.reshape(y, [-1,1])
-        
-        y_hat = self.forward(x)
+        y_hat, y = self.forward(batch)
         self.val_mse(y_hat, y)
-        return 
-    
+
     def validation_epoch_end(self, outputs) -> None:
         self.log('val_mse', self.val_mse)
-        return super().validation_epoch_end(outputs)
 
+    def test_step(self,  batch, batch_idx):
+        y_hat, y = self.forward(batch)
+        self.test_mse(y_hat, y)
+
+    def test_epoch_end(self, outputs) -> None:
+        self.log('test_mse', self.test_mse)
+
+    def compute_pdf(self, points):
+        pdf = torch.zeros_like(points)
+        points = torch.reshape(points, (-1, 1))
+        for i in range(points.shape[0]):
+            x = points[i]
+            x.requires_grad = True
+            y_hat = self.model.forward(x)
+            y_hat.backward()
+
+            pdf[i] = x.grad
+            x.grad.zero_()
+
+        return pdf
+
+    def compute_cdf(self, points):
+        cdf = torch.zeros_like(points)
+        points = torch.reshape(points, (-1, 1))
+        with torch.no_grad():
+            for i in range(points.shape[0]):
+                x = points[i]
+                y_hat = self.model.forward(x)
+                cdf[i] = y_hat
+        return cdf
 
     def configure_optimizers(self) -> None:
         # setup the optimization algorithm
@@ -54,9 +81,9 @@ class FeedForward(pl.LightningModule):
         schedule = {
             "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer,
-                T_max=cfg.max_steps,
+                T_max=cfg.max_epochs,
                 eta_min=0),
-            "interval": "step",
+            "interval": "epoch",
             "frequency": 1,
             "monitor": "val_loss",
             "strict": True,
@@ -64,5 +91,3 @@ class FeedForward(pl.LightningModule):
         }
 
         return [optimizer], [schedule]
-
-    

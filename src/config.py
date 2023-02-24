@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 class Config():
-    batch_size = 32
-    max_steps = 2000
+    seed = 2023
+    batch_size = 500
+    max_epochs = 1000
     lr = 1e-3

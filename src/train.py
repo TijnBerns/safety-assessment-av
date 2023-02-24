@@ -1,23 +1,25 @@
+from pprint import pprint
 import numpy as np
 import torch
-from torch.distributions import MultivariateNormal
+from torch.distributions import MultivariateNormal, Normal
 from typing import Tuple, List
 from torch.utils.data import Dataset, DataLoader
 from model import FeedForward
 from torch.utils.data.dataloader import default_collate
 from config import Config as cfg
-
-
+import scipy
+from itertools import product
+import random
 import pytorch_lightning as pl
-
+from pytorch_lightning.callbacks import ModelCheckpoint
 import matplotlib.pyplot as plt
-
-from pprint import pprint
+from collections import defaultdict
+import json
 
 
 # Constants
-N = int(10e6)
-M = int(300)
+N = int(1e7)
+M = cfg.batch_size
 c = 1
 
 
@@ -31,7 +33,8 @@ cov = torch.tensor([[sigma_X_sq, 0.8], [0.8, sigma_Y_sq]], dtype=torch.float32)
 
 
 def generate_data(mean: torch.Tensor, cov: torch.Tensor, threshold: float, dim: int = 1) -> Tuple[torch.Tensor, torch.Tensor]:
-    # Define the multivariate distribution
+    """Generate normal and edge data from multivariate normal distribution
+    """
     mv = MultivariateNormal(mean, cov)
     data = mv.sample_n(N)
 
@@ -41,12 +44,15 @@ def generate_data(mean: torch.Tensor, cov: torch.Tensor, threshold: float, dim: 
     return normal_data, edge_data
 
 
-def annotate_data(data: torch.Tensor, bins: torch.Tensor) -> List[torch.Tensor]:
-    counts, _ = torch.histogram(data[:, 0], bins)
-    targets = torch.cumsum(counts, dim=0) / len(data[:, 0])
+def annotate_data(data: torch.Tensor, bins: torch.Tensor, targets: torch.Tensor = None) -> Tuple[List[torch.Tensor], torch.Tensor]:
+    """Adds a target to every datapoints which corresponds to the value on the emp. cdf
+    """
+    counts, _ = torch.histogram(data, bins)
+    if targets is None:
+        targets = torch.cumsum(counts, dim=0) / len(data)
 
     # Sort data, as targets, are sorted by definition
-    data_sorted = torch.sort(data[:, 0], dim=0)[0]
+    data_sorted = torch.sort(data, dim=0)[0]
     samples = []
 
     # Construct samples
@@ -59,24 +65,99 @@ def annotate_data(data: torch.Tensor, bins: torch.Tensor) -> List[torch.Tensor]:
             samples.append((data_sorted[k], targets[i]))
             k += 1
 
-    return samples
+    return samples, targets
+
+
+def plot(model, bins, baseline, save=None):
+    # plot estimated pdf
+    x_values = torch.linspace(bins[0], bins[-1], len(bins))
+    pdf_true = scipy.stats.norm.pdf(x_values, mu_X, np.sqrt(sigma_X_sq))
+    pdf_nn = model.compute_pdf(x_values)
+    pdf_kde = [baseline(x) for x in x_values]
+    _, axs = plt.subplots(1, 2, figsize=(14, 7))
+
+    axs[0].plot(x_values, pdf_true, label='true pdf')
+    axs[0].plot(x_values, pdf_nn, label='NN estimate')
+    axs[0].plot(x_values, pdf_kde, label='KDE estimate')
+    axs[0].legend()
+
+    # Plot CDF
+    cdf_nn = model.compute_cdf(x_values)
+    axs[1].plot(emp_cdf, label='emp. cdf (target)')
+    axs[1].plot(cdf_nn, label='NN estimate')
+    axs[1].legend()
+
+    if save is None:
+        plt.show()
+        return
+    plt.savefig(save)
+
+
+def train_test_pipeline(samples, eval_loader_norm, eval_loader_edge):
+    results_dict = defaultdict(lambda: defaultdict(dict))
+
+    # Construct dataloaders
+    train_loader = DataLoader(
+        samples, shuffle=True, batch_size=cfg.batch_size, collate_fn=default_collate, drop_last=True)
+    val_loader = DataLoader(
+        samples, shuffle=False, batch_size=cfg.batch_size, collate_fn=default_collate, drop_last=True)
+
+    # # Fit models on data
+    # baseline_kde = scipy.stats.gaussian_kde(d_norm[:,0][:M])
+    num_layers = [1, 2, 3]
+    num_hidden = [10, 25, 50]
+    for nl, nh in product(num_layers, num_hidden):
+        # Initialize checkpointer
+        pattern = "epoch_{epoch:04d}.step_{step:09d}.val-mse_{val_mse:.4f}"
+        ModelCheckpoint.CHECKPOINT_NAME_LAST = pattern + ".last"
+        checkpointer = ModelCheckpoint(
+            save_top_k=1,
+            every_n_train_steps=500,
+            monitor="val_mse",
+            filename=pattern + ".best",
+            save_last=True,
+            auto_insert_metric_name=False,
+        )
+
+        # Fit the model
+        trainer = pl.Trainer(max_epochs=cfg.max_epochs,
+                             inference_mode=False, callbacks=[checkpointer])
+        model = FeedForward(1, 1, nh, nl)
+        trainer.fit(model, train_loader, val_loader)
+        res_norm = trainer.test(model, eval_loader_norm)[0]['test_mse']
+        res_edge = trainer.test(model, eval_loader_edge)[0]['test_mse']
+        results_dict[nl][nh] = (res_norm, res_edge)
+        print(f"\n\n============={(res_norm, res_edge)}=============\n\n")
+
+    # plot(model, bins, kde_baseline)
+    return results_dict
 
 
 if __name__ == "__main__":
+    torch.manual_seed(cfg.seed)
+    results_dicts = {}
+
+    # Generate data from mv Gaussian
     d_norm, d_edge = generate_data(mean, cov, c)
-    counts, bins = torch.histogram(d_norm[:, 0], M)
+    num_bins = M
+    counts, bins = torch.histogram(d_norm[:, 0], num_bins)
     emp_cdf = torch.cumsum(counts, dim=0) / len(d_norm[:, 0])
 
-    # Annotate data
-    samples = annotate_data(d_edge, bins)
-    samples.extend(annotate_data(d_norm, bins))
-    train_loader = DataLoader(samples,shuffle=True, batch_size=cfg.batch_size, collate_fn=default_collate, drop_last=True)
-    val_loader = DataLoader(samples,shuffle=True, batch_size=1)
+    # Label data and construct data loaders
+    samples_norm, targets_norm = annotate_data(d_norm[:, 0], bins)
+    samples_edge, targets_edge =  annotate_data(d_edge[:, 0], bins)
+    eval_loader_norm = DataLoader(samples_norm)
+    eval_loader_edge = DataLoader(samples_edge)
+    
+    # Fit models on normal data
+    results_norm = train_test_pipeline(samples_norm, eval_loader_norm, eval_loader_edge)
+    results_dicts['normal'] = results_norm
+    with open("test.json", 'w+') as f:
+        json.dump(results_dicts, f, indent=2)
 
-    trainer = pl.Trainer(max_steps=cfg.max_steps, inference_mode=False)
-    model = FeedForward(1, 1, 256, 3)
-    trainer.fit(model, train_loader, val_loader)
-    
-    
-    
-    
+    # Add edge data and fit models on normal + edge data
+    samples_norm.extend(samples_edge)
+    results_edge = train_test_pipeline(samples_norm, eval_loader_norm, eval_loader_edge)
+    results_dicts['normal+edge'] = results_edge
+    with open("test.json", 'w+') as f:
+        json.dump(results_dicts, f, indent=2)
