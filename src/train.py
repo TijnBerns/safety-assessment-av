@@ -22,7 +22,6 @@ N = int(1e7)
 M = cfg.batch_size
 c = 1
 
-
 # Distribution parameters
 mu_X = 0
 mu_Y = 0
@@ -30,6 +29,13 @@ sigma_X_sq = 2
 sigma_Y_sq = 1
 mean = torch.tensor([mu_X, mu_Y], dtype=torch.float32)
 cov = torch.tensor([[sigma_X_sq, 0.8], [0.8, sigma_Y_sq]], dtype=torch.float32)
+
+
+def compute_p_edge(data, dim):
+    """Computes the fraction of edge data in the provided samples. 
+    This fraction is based on the number of samples where x is larger than c along dimension dim
+    """
+    return len(data[data[:,dim] > c]) / len(data)
 
 
 def generate_data(mean: torch.Tensor, cov: torch.Tensor, threshold: float, dim: int = 1) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -41,11 +47,28 @@ def generate_data(mean: torch.Tensor, cov: torch.Tensor, threshold: float, dim: 
     # Filter edge data, and redraw sample for normal data
     edge_data = data[data[:, dim] > c][:M]
     normal_data = mv.sample_n(M)
-    return normal_data, edge_data
+    return normal_data, edge_data, compute_p_edge(data, dim)
+
+
+def combine_data(normal_data: torch.Tensor, edge_data: torch.Tensor, p_edge: float):
+    """Combines normal and edge data retaining the fraction of edge cases by duplicating samples from the normal data.
+    """
+    # Split the normal data based on c
+    normal_only_data = normal_data[normal_data[:,1] <= c]
+    edge_from_normal_data = normal_data[normal_data[:,1] > c]
+    
+    # Compute how often we need to duplicate the normal data
+    repeat_factor = int(1 + 1 // p_edge)
+    remainder = round((1 % p_edge) * (len(normal_data)))
+    
+    # Create combined data tensor
+    combined_data = normal_only_data.repeat(repeat_factor, 1)
+    combined_data = torch.cat((combined_data, normal_only_data[:remainder], edge_data, edge_from_normal_data))
+    return combined_data
 
 
 def annotate_data(data: torch.Tensor, bins: torch.Tensor, targets: torch.Tensor = None) -> Tuple[List[torch.Tensor], torch.Tensor]:
-    """Adds a target to every datapoints which corresponds to the value on the emp. cdf
+    """Adds a target to every datapoints which corresponds to the value on the emp. cdf.
     """
     counts, _ = torch.histogram(data, bins)
     if targets is None:
@@ -138,14 +161,17 @@ if __name__ == "__main__":
     results_dicts = {}
 
     # Generate data from mv Gaussian
-    d_norm, d_edge = generate_data(mean, cov, c)
+    normal_data, edge_data, p_edge = generate_data(mean, cov, c)
+    combined_data = combine_data(normal_data, edge_data, p_edge)
+
     num_bins = M
-    counts, bins = torch.histogram(d_norm[:, 0], num_bins)
-    emp_cdf = torch.cumsum(counts, dim=0) / len(d_norm[:, 0])
+    counts, bins = torch.histogram(normal_data[:, 0], num_bins)
+    emp_cdf = torch.cumsum(counts, dim=0) / len(normal_data[:, 0])
 
     # Label data and construct data loaders
-    samples_norm, targets_norm = annotate_data(d_norm[:, 0], bins)
-    samples_edge, targets_edge =  annotate_data(d_edge[:, 0], bins)
+    samples_norm, targets_norm = annotate_data(normal_data[:, 0], bins)
+    samples_edge, targets_edge = annotate_data(edge_data[:, 0], bins)
+    samples_combined, targets_combined = annotate_data(combined_data[:,0], bins)
     eval_loader_norm = DataLoader(samples_norm)
     eval_loader_edge = DataLoader(samples_edge)
     
@@ -155,9 +181,8 @@ if __name__ == "__main__":
     with open("test.json", 'w+') as f:
         json.dump(results_dicts, f, indent=2)
 
-    # Add edge data and fit models on normal + edge data
-    samples_norm.extend(samples_edge)
-    results_edge = train_test_pipeline(samples_norm, eval_loader_norm, eval_loader_edge)
+    # Fit model on combined data
+    results_edge = train_test_pipeline(combined_data, eval_loader_norm, eval_loader_edge)
     results_dicts['normal+edge'] = results_edge
     with open("test.json", 'w+') as f:
         json.dump(results_dicts, f, indent=2)
