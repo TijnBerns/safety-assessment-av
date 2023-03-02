@@ -81,7 +81,7 @@ class FeedForward(pl.LightningModule):
         schedule = {
             "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer,
-                T_max=cfg.max_epochs,
+                T_max=cfg.max_steps,
                 eta_min=0),
             "interval": "epoch",
             "frequency": 1,
