@@ -1,5 +1,5 @@
 gitignore
-img/
+/img
 lightning_logs/
 related_work/
 

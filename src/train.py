@@ -10,8 +10,13 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from collections import defaultdict
 import json
 import scipy.stats
-import data_utils 
+import data_utils
 import numpy as np
+
+import matplotlib.pyplot as plt
+
+from scipy import signal
+
 
 def train_test_pipeline(samples, eval_loader_norm, eval_loader_edge):
     results_dict = defaultdict(lambda: defaultdict(dict))
@@ -25,7 +30,7 @@ def train_test_pipeline(samples, eval_loader_norm, eval_loader_edge):
     # # Fit models on data
     # baseline_kde = scipy.stats.gaussian_kde(d_norm[:,0][:M])
     num_layers = [3]
-    num_hidden = [ 25, 50]
+    num_hidden = [50]
     for nl, nh in product(num_layers, num_hidden):
         # Initialize checkpointer
         pattern = f"layers_{nl}.neuros_{nh}.epoch_{{epoch:04d}}.step_{{step:09d}}.val-mse_{{val_mse:.4f}}"
@@ -57,27 +62,49 @@ if __name__ == "__main__":
     results_dicts = {}
 
     # Generate data from mv Gaussian
-    normal_data, edge_data, p_edge = data_utils.generate_data(cfg.mean, cfg.cov, cfg.c)
+    normal_data, edge_data, p_edge = data_utils.generate_data(
+        cfg.mean, cfg.cov, cfg.c)
     combined_data = data_utils.combine_data(normal_data, edge_data, p_edge)
 
     # Label training data
     _, bins = torch.histogram(normal_data[:, 0], cfg.num_bins)
-    samples_norm, targets_norm = data_utils.annotate_data(normal_data[:, 0], bins)
-    samples_edge, targets_edge = data_utils.annotate_data(edge_data[:, 0], bins, targets_norm)
-    samples_combined, targets_combined = data_utils.annotate_data(combined_data[:, 0], bins)
-    
+    samples_norm, targets_norm = data_utils.annotate_data(
+        normal_data[:, 0], bins)
+    # samples_edge, targets_edge = data_utils.annotate_data(edge_data[:, 0], bins, targets_norm)
+    samples_combined, targets_combined = data_utils.annotate_data(
+        combined_data[:, 0], smooth=False)
+
     # Normal test set
     step_size = (bins[1] - bins[0]) / 5
-    x_values_norm = torch.arange(min(normal_data[:,0]), max(normal_data[:,0]), step_size)
-    true_cdf_norm = scipy.stats.norm.cdf(x_values_norm, cfg.mu_X, np.sqrt(cfg.sigma_X_sq))
+    breakpoint()
+    x_values_norm = torch.arange(
+        min(normal_data[:, 0]), max(normal_data[:, 0]), step_size)
+    true_cdf_norm = scipy.stats.norm.cdf(
+        x_values_norm, cfg.mu_X, np.sqrt(cfg.sigma_X_sq))
     test_samples_norm = list(zip(list(x_values_norm), list(true_cdf_norm)))
     eval_loader_norm = DataLoader(test_samples_norm)
-    
+
     # Edge test set
-    x_values_edge = torch.arange(min(edge_data[:,0]), max(edge_data[:,0]), step_size) 
-    true_cdf_edge = scipy.stats.norm.cdf(x_values_edge, cfg.mu_X, np.sqrt(cfg.sigma_X_sq))
+    x_values_edge = torch.arange(
+        min(edge_data[:, 0]), max(edge_data[:, 0]), step_size)
+    true_cdf_edge = scipy.stats.norm.cdf(
+        x_values_edge, cfg.mu_X, np.sqrt(cfg.sigma_X_sq))
     test_samples_edge = list(zip(list(x_values_edge), list(true_cdf_edge)))
     eval_loader_edge = DataLoader(test_samples_edge)
+
+    # fig, axs = plt.subplots(1, 2)
+    # axs[0].plot([x for x, _ in samples_norm], [
+    #             y for _, y in samples_norm], alpha=0.5, color='black', linestyle='dotted')
+    # axs[0].plot(x_values_norm, true_cdf_norm, alpha=0.5)
+    # axs[0].plot(x_values_edge, true_cdf_edge, alpha=0.5)
+
+    # axs[1].plot([x for x, _ in samples_combined], [
+    #             y for _, y in samples_combined], alpha=0.5, color='black', linestyle='dotted')
+    # axs[1].plot(x_values_norm, true_cdf_norm, alpha=0.5)
+    # axs[1].plot(x_values_edge, true_cdf_edge, alpha=0.5)
+
+    # print(f"p_edge: {p_edge * 100:.2f}%")
+    # plt.show()
 
     # Fit models on normal data
     results_norm = train_test_pipeline(

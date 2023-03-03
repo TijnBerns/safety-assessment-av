@@ -5,13 +5,13 @@ import torch
 class Config():
     seed = 2023
     batch_size = 32
-    max_steps = 3000
+    max_steps = 10000
     lr = 1e-3
     
     # Constants
     N = int(1e7)
-    M = 300
-    num_bins = 2 * M
+    M = 500
+    num_bins = 10 * M
     c = 1
 
     # Distribution parameters

@@ -2,6 +2,7 @@ import torch
 from torch.distributions import MultivariateNormal
 from typing import Tuple, List
 from config import Config as cfg
+from scipy.signal import savgol_filter
 
 
 def compute_p_edge(data, dim):
@@ -20,6 +21,7 @@ def generate_data(mean: torch.Tensor, cov: torch.Tensor, threshold: float, dim: 
     # Filter edge data, and redraw sample for normal data
     edge_data = data[data[:, dim] > cfg.c][:cfg.M]
     normal_data = mv.sample_n(cfg.M)
+    assert len(normal_data) == len(edge_data)
     return normal_data, edge_data, compute_p_edge(data, dim)
 
 
@@ -33,20 +35,25 @@ def combine_data(normal_data: torch.Tensor, edge_data: torch.Tensor, p_edge: flo
     # Compute how often we need to duplicate the normal data
     repeat_factor = int(1 + 1 // p_edge)
     remainder = round((1 % p_edge) * (len(normal_data)))
-
+    
     # Create combined data tensor
     combined_data = normal_only_data.repeat(repeat_factor, 1)
-    combined_data = torch.cat(
-        (combined_data, normal_only_data[:remainder], edge_data, edge_from_normal_data))
+    combined_data = torch.cat((combined_data, 
+                               normal_only_data[torch.randperm(remainder)], 
+                               edge_data, 
+                               edge_from_normal_data))
     return combined_data
 
 
-def annotate_data(data: torch.Tensor, bins: torch.Tensor, targets: torch.Tensor = None) -> Tuple[List[torch.Tensor], torch.Tensor]:
+def annotate_data(data: torch.Tensor, bins: torch.Tensor = cfg.num_bins, targets: torch.Tensor = None, smooth=False) -> Tuple[List[torch.Tensor], torch.Tensor]:
     """Adds a target to every datapoints which corresponds to the value on the emp. cdf.
     """
     counts, _ = torch.histogram(data, bins)
     if targets is None:
         targets = torch.cumsum(counts, dim=0) / len(data)
+        
+    if smooth:
+        targets = savgol_filter(targets, window_length=len(targets) // 10 , polyorder=1)
 
     # Sort data, as targets, are sorted by definition
     data_sorted = torch.sort(data, dim=0)[0]
@@ -57,9 +64,22 @@ def annotate_data(data: torch.Tensor, bins: torch.Tensor, targets: torch.Tensor 
     for i in range(len(counts)):
         if counts[i] == 0:
             continue
-
+        
         for _ in range(int(counts[i].item())):
             samples.append((data_sorted[k], targets[i]))
             k += 1
+            
+    res = []
+    [res.append(x) for x in samples if x not in res]
+    return res, targets
 
-    return samples, targets
+
+def smooth_step_function(input):
+    output = torch.zeros(input)
+    i = 0
+    j = 0
+    while i < len(input):
+        k = j
+        while input[j] == input[j+1]:
+            k += 1
+        
