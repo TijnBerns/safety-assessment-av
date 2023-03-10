@@ -1,34 +1,52 @@
 import torch
 from torch.distributions import MultivariateNormal
 from typing import Tuple, List
-from config import Config as cfg
+import numpy as np
 
 
-def compute_p_edge(data, dim):
+def compute_p_edge(data, threshold, dim):
     """Computes the fraction of edge data in the provided samples. 
     This fraction is based on the number of samples where x is larger than c along dimension dim
     """
-    return len(data[data[:, dim] > cfg.c]) / len(data)
+    return len(data[data[:, dim] > threshold]) / len(data)
 
 
-def generate_data(mean: torch.Tensor, cov: torch.Tensor, threshold: float, dim: int = 1) -> Tuple[torch.Tensor, torch.Tensor]:
+def determine_threshold(data: np.ndarray, frac_edge: float, dim: int = -1):
+    """Sets a threshold on the final column of data such that frac_edge * 100 percent of samples are larger than the threshold
+    """
+    y_sorted = np.sort(data[:, dim])
+    i = int(len(y_sorted) * (1- frac_edge))
+    return y_sorted[i]
+
+
+def generate_data(ditribution, frac_edge: float, num_norm, num_edge, dim: int = 1) -> Tuple[np.ndarray, np.ndarray, float]:
     """Generate normal and edge data from multivariate normal distribution
     """
-    mv = MultivariateNormal(mean, cov)
-    data = mv.sample_n(cfg.N)
+    # Set threshold on dim such that
+    data = ditribution.rvs(10_000_000)
+    threshold = determine_threshold(data, frac_edge)
 
     # Filter edge data, and redraw sample for normal data
-    edge_data = data[data[:, dim] > cfg.c][:cfg.M]
-    normal_data = mv.sample_n(cfg.M)
-    return normal_data, edge_data, compute_p_edge(data, dim)
+    edge_data = data[data[:, dim] > threshold][:num_edge]
+    normal_data = ditribution.rvs(num_norm)
+    return normal_data, edge_data, threshold
 
 
-def combine_data(normal_data: torch.Tensor, edge_data: torch.Tensor, p_edge: float):
+def filter_data(normal_data, edge_data, threshold: float, dim=-1) -> Tuple[np.ndarray, np.ndarray]: 
+    """Filters data be adding all edge data points in normal data array to the edge data array
+    """
+    normal_data_filtered = normal_data[normal_data[:,dim] <= threshold]
+    edge_data_filtered = np.concatenate((edge_data, normal_data[normal_data[:,dim] > threshold]))
+    return normal_data_filtered, edge_data_filtered
+    
+
+
+def combine_data(normal_data: torch.Tensor, edge_data: torch.Tensor, threshold, p_edge: float):
     """Combines normal and edge data retaining the fraction of edge cases by duplicating samples from the normal data.
     """
     # Split the normal data based on c
-    normal_only_data = normal_data[normal_data[:, 1] <= cfg.c]
-    edge_from_normal_data = normal_data[normal_data[:, 1] > cfg.c]
+    normal_only_data = normal_data[normal_data[:, 1] <= threshold]
+    edge_from_normal_data = normal_data[normal_data[:, 1] > threshold]
 
     # Compute how often we need to duplicate the normal data
     repeat_factor = int(1 + 1 // p_edge)

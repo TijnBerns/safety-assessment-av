@@ -2,6 +2,9 @@ gitignore
 img/
 lightning_logs/
 related_work/
+notebooks/
+estimates/
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
