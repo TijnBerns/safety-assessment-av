@@ -1,10 +1,11 @@
-gitignore
 img/
 lightning_logs/
 related_work/
 notebooks/
 estimates/
 data/
+checkpoints/
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

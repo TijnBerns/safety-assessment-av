@@ -42,7 +42,7 @@ class KDE_Estimator(Estimator):
     def estimate(self, x_values, estimate_fn, *args, **kwargs):
         estimate = np.empty_like(x_values)
         
-        for i in tqdm(range(len(x_values)), desc=f"Computing estimate using {estimate_fn}"):
+        for i in range(len(x_values)):
             estimate[i] = estimate_fn(x_values[i], **kwargs)
         return estimate
         

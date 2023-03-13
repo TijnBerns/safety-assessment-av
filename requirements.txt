@@ -1,5 +1,5 @@
-torch 
-pytorch-lightning
-torchmetrics
 scipy
 matplotlib
+pandas
+scikit-learn
+tqdm
