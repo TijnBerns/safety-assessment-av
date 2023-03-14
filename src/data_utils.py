@@ -38,7 +38,6 @@ def filter_data(normal_data, edge_data, threshold: float, dim=-1) -> Tuple[np.nd
     return normal_data_filtered, edge_data_filtered
     
 
-
 # def combine_data(normal_data, edge_data, threshold, p_edge: float):
 #     """Combines normal and edge data retaining the fraction of edge cases by duplicating samples from the normal data.
 #     """

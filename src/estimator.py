@@ -23,7 +23,7 @@ class KDE_Estimator(Estimator):
         self.combined_fit = None
 
     def fit_baseline(self, data):
-        self.baseline = scipy.stats.gaussian_kde(data.T)
+        self.baseline_fit = scipy.stats.gaussian_kde(data.T)
 
     def fit_normal(self, data: np.array):
         self.normal_fit = scipy.stats.gaussian_kde(data.T)
@@ -32,7 +32,7 @@ class KDE_Estimator(Estimator):
         self.combined_fit = scipy.stats.gaussian_kde(data.T)
 
     def baseline_estimate(self, x):
-        return scipy.integrate.quad(lambda y: self.normal_fit([x, y]), -np.inf, np.inf)[0]
+        return scipy.integrate.quad(lambda y: self.baseline_fit([x, y]), -np.inf, np.inf)[0]
         
     def improved_estimate(self, x, c, p_normal, p_edge):
         integral_till_c = scipy.integrate.quad(lambda y: self.normal_fit([x, y]) + self.normal_fit([x, 2 * c - y] if y < c else 0), -np.inf, c)[0]

@@ -27,7 +27,7 @@ if __name__ == "__main__":
     x_values = np.linspace(-10, 10, 1000)
 
     for distribution_str, distribution in cfg.distributions.items():
-        true = [distribution.pdf(x) for x in x_values]
+        true = [cfg.single_distributions[distribution_str].pdf(x) for x in x_values]
 
     
         for num_normal, num_edge in zip(cfg.num_normal, cfg.num_edge):
@@ -51,7 +51,7 @@ if __name__ == "__main__":
                     # Fit data to estimators
                     kde_estimator.fit_baseline(normal_data)
                     kde_estimator.fit_normal(normal_filtered)
-                    kde_estimator.fit_edge(edge_data)
+                    kde_estimator.fit_edge(edge_filtered)
 
                     # Obtain estimates
                     baseline_estimates[f'run_{run}'] = kde_estimator.estimate(
