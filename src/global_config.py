@@ -10,7 +10,7 @@ class GlobalConfig():
     seed = 2023
 
     # Variables
-    num_normal = [100, 1000, 10_000]
+    num_normal = [100,1000, 10_000]
     num_edge = [100, 1000, 10_000]
     p_edge = [
         0.01,
