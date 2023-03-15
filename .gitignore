@@ -11,7 +11,8 @@ temp.py
 __pycache__/
 *.py[cod]
 *$py.class
-
+venv*
+logs*
 # C extensions
 *.so
 

@@ -24,7 +24,7 @@ if __name__ == "__main__":
     kde_estimator = KDE_Estimator()
 
     # Define evaluation interval
-    x_values = np.linspace(-10, 10, 1000)
+    x_values = cfg.evaluation_interval
 
     for distribution_str, distribution in cfg.distributions.items():
         true = [cfg.single_distributions[distribution_str].pdf(x) for x in x_values]
@@ -49,9 +49,9 @@ if __name__ == "__main__":
                         normal_data, edge_data, threshold)
 
                     # Fit data to estimators
-                    kde_estimator.fit_baseline(normal_data)
-                    kde_estimator.fit_normal(normal_filtered)
-                    kde_estimator.fit_edge(edge_filtered)
+                    kde_estimator.fit_baseline(normal_data[:,0])
+                    kde_estimator.fit_normal(normal_filtered[:,0])
+                    kde_estimator.fit_edge(edge_filtered[:,0])
 
                     # Obtain estimates
                     baseline_estimates[f'run_{run}'] = kde_estimator.estimate(

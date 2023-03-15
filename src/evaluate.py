@@ -66,7 +66,7 @@ if __name__ == "__main__":
     })
     for n in [100, 1000]:
         res = {}
-        for f in path.rglob(f"*.csv"):
+        for f in path.rglob(f"*{n}.*{n}.*.csv"):
             try:
                 baseline_df = pd.read_csv(f.parent / (f.parent.name + '.baseline.csv'))
                 improved_df = pd.read_csv(f.parent / (f.parent.name + '.improved.csv'))

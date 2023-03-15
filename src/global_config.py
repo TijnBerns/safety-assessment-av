@@ -10,7 +10,7 @@ class GlobalConfig():
     seed = 2023
 
     # Variables
-    num_normal = [100,1000, 10000]
+    num_normal = [100, 1000, 10_000]
     num_edge = [100, 1000, 10_000]
     p_edge = [
         0.01,
@@ -21,6 +21,7 @@ class GlobalConfig():
         0.30
     ]
     num_estimates = 100
+    evaluation_interval = np.linspace(-8, 8, 400)
 
     # Distributions
     distributions = {
@@ -33,4 +34,4 @@ class GlobalConfig():
     }
 
     # Path variables
-    path_estimates = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates')
+    path_estimates = Path('/home/tberns/safety-assessment-av/estimates')

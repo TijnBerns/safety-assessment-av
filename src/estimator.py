@@ -20,7 +20,7 @@ class KDE_Estimator(Estimator):
         super().__init__()
         self.baseline_fit = None
         self.normal_fit = None
-        self.combined_fit = None
+        self.edge_fit = None
 
     def fit_baseline(self, data):
         self.baseline_fit = scipy.stats.gaussian_kde(data.T)
@@ -29,15 +29,17 @@ class KDE_Estimator(Estimator):
         self.normal_fit = scipy.stats.gaussian_kde(data.T)
 
     def fit_edge(self, data: np.array):
-        self.combined_fit = scipy.stats.gaussian_kde(data.T)
+        self.edge_fit = scipy.stats.gaussian_kde(data.T)
 
     def baseline_estimate(self, x):
-        return scipy.integrate.quad(lambda y: self.baseline_fit([x, y]), -np.inf, np.inf)[0]
+        # return scipy.integrate.quad(lambda y: self.baseline_fit([x, y]), -np.inf, np.inf)[0]
+        return self.baseline_fit(x)
         
     def improved_estimate(self, x, c, p_normal, p_edge):
-        integral_till_c = scipy.integrate.quad(lambda y: self.normal_fit([x, y]) + self.normal_fit([x, 2 * c - y] if y < c else 0), -np.inf, c)[0]
-        integral_from_c = scipy.integrate.quad(lambda y: self.combined_fit([x, y]) + self.combined_fit([x, 2 * c - y] if y >= c else 0), c, np.inf)[0]
-        return p_normal * integral_till_c + p_edge * integral_from_c
+        # integral_till_c = scipy.integrate.quad(lambda y: self.normal_fit([x, y]) + self.normal_fit([x, 2 * c - y] if y < c else 0), -np.inf, c)[0]
+        # integral_from_c = scipy.integrate.quad(lambda y: self.edge_fit([x, y]) + self.edge_fit([x, 2 * c - y] if y >= c else 0), c, np.inf)[0]
+        # return p_normal * integral_till_c + p_edge * integral_from_c
+        return p_normal * self.normal_fit(x) + p_edge * self.edge_fit(x)
     
     def estimate(self, x_values, estimate_fn, *args, **kwargs):
         estimate = np.empty_like(x_values)
