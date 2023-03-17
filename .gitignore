@@ -1,13 +1,18 @@
-gitignore
-/img
+img/
 lightning_logs/
 related_work/
-
+notebooks/
+estimates/
+data/
+checkpoints/
+logs/
+temp.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-
+venv*
+logs*
 # C extensions
 *.so
 
