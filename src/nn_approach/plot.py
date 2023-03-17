@@ -2,7 +2,7 @@ import torch
 import scipy
 import numpy as np
 from config import Config as cfg
-import data_utils
+import data
 import matplotlib.pyplot as plt
 from model import FeedForward
 
@@ -33,7 +33,7 @@ def plot(model, bins, emp_cdf, save=None):
 
 if __name__ == "__main__":
     torch.manual_seed(cfg.seed)
-    normal_data, edge_data, p_edge = data_utils.generate_data(cfg.mean, cfg.cov, cfg.c)
+    normal_data, edge_data, p_edge = data.generate_data(cfg.mean, cfg.cov, cfg.c)
     counts, bins = torch.histogram(normal_data[:, 0], cfg.num_bins)
     emp_cdf = torch.cumsum(counts, dim=0) / len(normal_data[:, 0])
     

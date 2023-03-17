@@ -27,8 +27,8 @@ class FeedForward(pl.LightningModule):
 
     def forward(self, batch: torch.Tensor) -> torch.Tensor:
         x, y = batch
-        x = torch.reshape(x, [-1, 1])
-        y = torch.reshape(y, [-1, 1])
+        x = torch.reshape(x, [-1, 1]).type(torch.float32)
+        y = torch.reshape(y, [-1, 1]).type(torch.float32)
         return self.model(x), y
 
     def training_step(self, batch, batch_idx):
@@ -41,14 +41,14 @@ class FeedForward(pl.LightningModule):
         y_hat, y = self.forward(batch)
         self.val_mse(y_hat, y)
 
-    def validation_epoch_end(self, outputs) -> None:
+    def on_validation_epoch_end(self) -> None:
         self.log('val_mse', self.val_mse)
 
     def test_step(self,  batch, batch_idx):
         y_hat, y = self.forward(batch)
         self.test_mse(y_hat, y)
 
-    def test_epoch_end(self, outputs) -> None:
+    def on_test_epoch_end(self) -> None:
         self.log('test_mse', self.test_mse)
 
     def compute_pdf(self, points):
@@ -77,11 +77,11 @@ class FeedForward(pl.LightningModule):
 
     def configure_optimizers(self) -> None:
         # setup the optimization algorithm
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=cfg.lr)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=cfg.nn_lr)
         schedule = {
             "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer,
-                T_max=cfg.max_steps,
+                T_max=cfg.nn_training_steps,
                 eta_min=0),
             "interval": "epoch",
             "frequency": 1,
