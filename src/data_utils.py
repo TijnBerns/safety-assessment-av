@@ -2,7 +2,7 @@ from typing import Tuple, List
 import numpy as np
 
 
-def compute_p_edge(data, threshold, dim):
+def compute_p_edge(data, threshold, dim=-1):
     """Computes the fraction of edge data in the provided samples. 
     This fraction is based on the number of samples where x is larger than c along dimension dim
     """
@@ -49,10 +49,13 @@ def filter_data(normal_data: np.ndarray, edge_data: np.ndarray, threshold: float
 def combine_data(normal_data: np.ndarray, edge_data: np.ndarray, threshold: float, p_edge: float):
     """Combines normal and edge data retaining the fraction of edge cases by duplicating samples from the normal data.
     """
+    if p_edge == 0:
+        print("WARNING: estimated p_edge equals 0, thus data cannot be combined.")
+        return normal_data
+    
     # Split the normal data based on threshold
     normal_data_only, edge_from_normal_data = split_data(normal_data, threshold)
-
-    # Compute how often we need to duplicate the normal data
+    
     repeat_factor = int(1 + 1 // p_edge)
     remainder = round((1 % p_edge) * (len(normal_data)))
 

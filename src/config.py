@@ -27,6 +27,7 @@ class Config():
     distributions = {
         'bivariate_guassian_a': scipy.stats.multivariate_normal([0, 0], [[2, 0.5], [0.5, 2]])
     }
+    
     single_distributions = {
         'bivariate_guassian_a': scipy.stats.norm(0.0, np.sqrt(2.0))
     }

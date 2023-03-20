@@ -19,14 +19,14 @@ from tqdm import tqdm
 from pathlib import Path
 import json
 
-import data
+import data_utils
 from config import Config as cfg
-from estimator import KDE_Estimator
+from estimator import KDE_Estimator_a, KDE_Estimator, combined_estimation_pipline
 from utils import save_csv
 
-def main():
+def improved_estimation_pipeline(root: Path):
     # Initialize estimator
-    kde_estimator = KDE_Estimator()
+    kde_estimator = KDE_Estimator_a()
 
     # Define evaluation interval
     x_values = cfg.evaluation_interval
@@ -44,11 +44,11 @@ def main():
 
             for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_edge} p_edge={p_edge}'):
                 # Generate data
-                normal_data, edge_data, threshold = data.generate_data(
+                normal_data, edge_data, threshold = data_utils.generate_data(
                     distribution, p_edge, num_normal, num_edge)
 
                 # Filter edge and normal data
-                normal_filtered, edge_filtered = data.filter_data(normal_data, edge_data, threshold)
+                normal_filtered, edge_filtered = data_utils.filter_data(normal_data, edge_data, threshold)
 
                 # Fit data to estimators
                 kde_estimator.fit_baseline(normal_data[:, 0])
@@ -63,7 +63,7 @@ def main():
                     c=threshold, p_normal=1-p_edge, p_edge=p_edge)
 
                 # Store results
-                parent = cfg.path_estimates / distribution_str / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}'
+                parent = root / distribution_str / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}'
                 save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.baseline.csv',
                          df=pd.DataFrame(baseline_estimates))
                 save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.improved.csv',
@@ -72,6 +72,16 @@ def main():
                 thresholds[f"run_{run}"] = threshold
                 with open(parent / 'thresholds.json', 'w') as f:
                     json.dump(thresholds, f, indent=2)
+    
+
+def main(type: str = 'combined'):
+    if type == 'combined':
+        root = cfg.path_estimates / 'kde_combined'
+        combined_estimation_pipline(KDE_Estimator(), KDE_Estimator(), root)
+    else: 
+        root = cfg.path_estimates / 'kde'
+        improved_estimation_pipeline(root)
+    
 
 
 if __name__ == "__main__":

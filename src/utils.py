@@ -24,3 +24,4 @@ def save_csv(path: Path, df: pd.DataFrame):
         parent.mkdir(parents=True)
 
     df.to_csv(path)
+
