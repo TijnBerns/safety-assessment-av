@@ -42,8 +42,7 @@ def combined_estimation_pipline(baseline_estimator: Estimator, combined_estimato
     x_values = cfg.evaluation_interval
 
     for distribution_str, distribution in cfg.distributions.items():
-        true = [cfg.single_distributions[distribution_str].pdf(
-            x) for x in x_values]
+        true = cfg.single_distributions[distribution_str].pdf(x_values)
 
         for p_edge, num_normal, num_edge in product(cfg.p_edge, cfg.num_normal, cfg.num_edge):
             thresholds = {}

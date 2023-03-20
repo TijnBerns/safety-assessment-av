@@ -21,7 +21,7 @@ def generate_data(ditribution, frac_edge: float, num_norm, num_edge, dim: int = 
     """Generate normal and edge data from multivariate normal distribution
     """
     # Set threshold on dim such that
-    data = ditribution.rvs(10_000_000)
+    data = ditribution.rvs(1_000_000)
     threshold = determine_threshold(data, frac_edge)
 
     # Filter edge data, and redraw sample for normal data

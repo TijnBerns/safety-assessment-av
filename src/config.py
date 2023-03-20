@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 import scipy.stats
+from scipy.stats import wishart, chi2
 from pathlib import Path
 import numpy as np
+import distributions as dist
 
 
 @dataclass
@@ -25,11 +27,24 @@ class Config():
 
     # Distributions
     distributions = {
-        'bivariate_guassian_a': scipy.stats.multivariate_normal([0, 0], [[2, 0.5], [0.5, 2]])
+        # 'bivariate_guassian_a': scipy.stats.multivariate_normal([0, 0], [[2, 0.5], [0.5, 2]]),
+        # 'bivariate_guassian_b': scipy.stats.multivariate_normal([0, 0], [[4, 0.5], [0.5, 2]]),
+        # 'bivariate_guassian_c': scipy.stats.multivariate_normal([0, 0], [[8, 0.5], [0.5, 2]]),
+        'multimodal_a': dist.UnivariateThreshold(
+            dist.Mixture([0.7,0.3], [scipy.stats.norm(-2, 1), scipy.stats.norm(2, 1)]),
+            scipy.stats.norm(0.0, np.sqrt(2.0))),
+        # 'gumbel_a': dist.UnivariateThreshold(
+        #     scipy.stats.gumbel_r(),
+        #     scipy.stats.norm(0.0, np.sqrt(2.0)))
+        
     }
     
     single_distributions = {
-        'bivariate_guassian_a': scipy.stats.norm(0.0, np.sqrt(2.0))
+        # 'bivariate_guassian_a': scipy.stats.norm(0.0, np.sqrt(2.0)), 
+        # 'bivariate_guassian_b': scipy.stats.norm(0.0, np.sqrt(4.0)), 
+        # 'bivariate_guassian_c': scipy.stats.norm(0.0, np.sqrt(8.0)), 
+        'multimodal_a': dist.Mixture([0.7,0.3], [scipy.stats.norm(-2, 1), scipy.stats.norm(2, 1)]),
+        # 'gumbel_a' : scipy.stats.gumbel_r()
     }
 
     # Path variables

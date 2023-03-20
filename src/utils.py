@@ -3,6 +3,8 @@ from typing import Tuple
 import torch
 from pathlib import Path
 import pandas as pd
+import matplotlib.pyplot as plt
+
 
 
 def set_device() -> Tuple[str, str]:
@@ -24,4 +26,13 @@ def save_csv(path: Path, df: pd.DataFrame):
         parent.mkdir(parents=True)
 
     df.to_csv(path)
+    
+    
+def plot_pdf(x_values, distribution):
+    _, ax = plt.subplots(1,1)
+    ax.plot(x_values, distribution.pdf(x_values))
+    plt.show()
+    
+
+    
 
