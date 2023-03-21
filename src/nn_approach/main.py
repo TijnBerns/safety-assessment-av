@@ -19,14 +19,14 @@ from config import Config as cfg
 
 import torch
 
-from estimator import NN_Estimator, combined_estimation_pipline
+from estimator import NN_Estimator, combined_data_pipline
 
 
 
 def main():
     device, _ = utils.set_device()
     pattern = f"layers_{cfg.nn_num_hidden_layers}.neuros_{cfg.nn_num_hidden_nodes}.epoch_{{epoch:04d}}.step_{{step:09d}}.val-mse_{{val_mse:.4f}}"
-    combined_estimation_pipline(NN_Estimator(), NN_Estimator(), root=cfg.path_estimates / 'nn_approach', device=device, pattern=pattern)
+    combined_data_pipline(NN_Estimator(), NN_Estimator(), root=cfg.path_estimates / 'nn_approach', device=device, pattern=pattern)
 
 
 if __name__ == "__main__":

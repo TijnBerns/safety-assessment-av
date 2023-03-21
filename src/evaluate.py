@@ -8,10 +8,6 @@ from tqdm import tqdm
 from config import Config as cfg
 from utils import save_csv, variables_from_filename
 
-cmap = plt.get_cmap('viridis')
-colors = cmap(np.linspace(0, 1, len(cfg.p_edge)))
-p_edge_colors = {str(k): v for k, v in zip(cfg.p_edge, colors)}
-
 
 def legend_without_duplicate_labels(ax):
     handles, labels = ax.get_legend_handles_labels()
@@ -30,7 +26,7 @@ def evaluate(dataframe: pd.DataFrame):
     true_matrix = np.tile(true, (estimates.shape[-1], 1))
 
     # Compute various metrics
-    sse = np.square(estimates.T - true_matrix).sum(axis=1)
+    sse = np.square(estimates.T - true_matrix).sum(axis=0)
     mean = np.mean(estimates.T, axis=0)
     var = np.var(estimates.T, axis=0)
 
@@ -88,7 +84,6 @@ def evaluation_pipeline(path: Path):
         p_edge, n_normal, n_edge = variables_from_filename(f.name)
 
         # plot_var(baseline_var, improved_var, baseline_df['x'], save=Path('img')/ (f.name + '_var.png'))
-        # ax.plot(baseline_df['x'], improved_var/baseline_var, alpha =0.5, color=p_edge_colors[p_edge])
 
         # Add the results to the dict
         results.append({
@@ -105,6 +100,12 @@ def evaluation_pipeline(path: Path):
 
     # plt.savefig('test')
     save_csv(path / 'results.csv', pd.DataFrame(results))
+
+
+if __name__ == "__main__":
+    path = Path(
+        '/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined/bivariate_guassian_a')
+    evaluation_pipeline(path)
 
     # res = {}
     # for n in [100, 1000, 10_000]:
@@ -138,9 +139,3 @@ def evaluation_pipeline(path: Path):
 
     # plt.title('$\Delta$ SSE against the probability of observing edge scenarios')
     # plt.savefig('img/delta_SSE')
-
-
-if __name__ == "__main__":
-    path = Path(
-        '/home/tberns/safety-assessment-av/estimates/kde_combined/bivariate_guassian_a')
-    evaluation_pipeline(path)
