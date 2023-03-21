@@ -25,7 +25,19 @@ def generate_data(ditribution, frac_edge: float, num_norm, num_edge, dim: int = 
     threshold = determine_threshold(data, frac_edge)
 
     # Filter edge data, and redraw sample for normal data
-    edge_data = data[data[:, dim] > threshold][:num_edge]
+    edge_data = np.array([])
+    while True:
+        new_edge_data = data[data[:, dim] > threshold]
+        edge_data = np.concatenate((edge_data, new_edge_data)) if edge_data.size else new_edge_data
+        
+        if len(edge_data) > num_edge:
+            new_edge_data = new_edge_data[:num_edge]
+            break
+        
+        data = ditribution.rvs(100_000)
+        
+    
+    
     normal_data = ditribution.rvs(num_norm)
     return normal_data, edge_data, threshold
 

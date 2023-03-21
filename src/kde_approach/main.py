@@ -32,8 +32,7 @@ def improved_estimation_pipeline(root: Path):
     x_values = cfg.evaluation_interval
 
     for distribution_str, distribution in cfg.distributions.items():
-        true = [cfg.single_distributions[distribution_str].pdf(
-            x) for x in x_values]
+        true = cfg.single_distributions[distribution_str].pdf(x_values)
 
         for p_edge, num_normal, num_edge in product(cfg.p_edge, cfg.num_normal, cfg.num_edge):
             thresholds = {}
@@ -74,7 +73,7 @@ def improved_estimation_pipeline(root: Path):
                     json.dump(thresholds, f, indent=2)
     
 
-def main(type: str = 'combined'):
+def main(type: str = 'asd'):
     if type == 'combined':
         root = cfg.path_estimates / 'kde_combined'
         combined_estimation_pipline(KDE_Estimator(), KDE_Estimator(), root)
