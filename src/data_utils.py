@@ -69,7 +69,7 @@ def combine_data(normal_data: np.ndarray, edge_data: np.ndarray, threshold: floa
     normal_data_only, edge_from_normal_data = split_data(normal_data, threshold)
     
     repeat_factor = int(1 + 1 // p_edge)
-    remainder = round((1 % p_edge) * (len(normal_data)))
+    remainder = round((1 % p_edge) * (len(normal_data_only)))
 
     # Create combined data tensor
     combined_data = np.repeat(normal_data_only, repeat_factor, axis=0)

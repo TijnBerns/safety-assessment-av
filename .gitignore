@@ -15,6 +15,7 @@ venv*
 logs*
 # C extensions
 *.so
+estimates*
 
 # Distribution / packaging
 .Python
