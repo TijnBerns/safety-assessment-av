@@ -1,6 +1,9 @@
-#!/usr/bin/env bash
-#SBATCH --partition=cncz
-#SBATCH --time=48:00:00
+#!/bin/bash
+#SBATCH --account=cseduproject
+#SBATCH --partition=csedu-prio,csedu
+#SBATCH --qos=csedu-small
+#SBATCH --cpus-per-task=1
+#SBATCH --time=4:00:00
 #SBATCH --output=./logs/slurm/%J.out
 #SBATCH --error=./logs/slurm/%J.out
 

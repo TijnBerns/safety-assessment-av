@@ -31,13 +31,11 @@ def generate_data(ditribution, frac_edge: float, num_norm, num_edge, dim: int = 
         edge_data = np.concatenate((edge_data, new_edge_data)) if edge_data.size else new_edge_data
         
         if len(edge_data) > num_edge:
-            new_edge_data = new_edge_data[:num_edge]
+            edge_data = new_edge_data[:num_edge]
             break
         
         data = ditribution.rvs(100_000)
         
-    
-    
     normal_data = ditribution.rvs(num_norm)
     return normal_data, edge_data, threshold
 

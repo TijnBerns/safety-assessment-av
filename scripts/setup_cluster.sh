@@ -9,7 +9,7 @@ cd "$SCRIPT_DIR" || exit 1
 mkdir -p /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/checkpoints
 ln -sfn /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/checkpoints "$SCRIPT_DIR"/../checkpoints
 
-mkdir -p /ceph/csedu-scratch/other//users/"$USER"/safety-assessment-av/lightning_logs
+mkdir -p /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/lightning_logs
 ln -sfn /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/lightning_logs "$SCRIPT_DIR"/../lightning_logs
 
 mkdir -p /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/logs
@@ -54,20 +54,10 @@ ln -sfn /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/estimates "$SCRIP
 # }
 
 # set up a virtual environment
-echo "### SETTING UP VIRTUAL ENVIRONMENT ON CN99 ###"
+echo "### SETTING UP VIRTUAL ENVIRONMENT ON CN84 ###"
 ./setup_venv.sh
 
-# # make sure that there's also a virtual environment
-# # on the GPU nodes
-# echo "### SETTING UP VIRTUAL ENVIRONMENT ON CN47 ###"
-# ssh cn47 "
-#   source .profile
-#   cd $PWD;
-#   ./setup_venv.sh;
-# "
+srun -p csedu-prio -A cseduproject -q csedu-small -w cn47 rsync cn84:/scratch/tberns/ /scratch/tberns/
+srun -p csedu-prio -A cseduproject -q csedu-small -w cn48 rsync cn84:/scratch/tberns/
 
-# echo "### SETTING UP VIRTUAL ENVIRONMENT ON CN48 ###"
-# ssh cn48 "
-#   source .profile
-#   cd $PWD;
-#   ./setup_venv.sh;
+

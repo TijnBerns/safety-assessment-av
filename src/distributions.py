@@ -129,30 +129,30 @@ class Mixture(Distribution):
 #     def pdf(self, x): 
 #         pass
         
-# if __name__ =="__main__":
-#     # rv = UnivariateThreshold(scipy.stats.cauchy(), scipy.stats.norm())
-#     # rv = Mixture([0.7,0.3], [scipy.stats.norm(-2, 1), scipy.stats.norm(2, 1)])
-#     # x = np.linspace(-8,8,1000)
+if __name__ =="__main__":
+    # rv = UnivariateThreshold(scipy.stats.cauchy(), scipy.stats.norm())
+    # rv = Mixture([0.7,0.3], [scipy.stats.norm(-2, 1), scipy.stats.norm(2, 1)])
+    # x = np.linspace(-8,8,1000)
 
-#     # _, ax = plt.subplots(1,1)
-#     # ax.hist(rv.rvs(10_000),bins=100, density=True,  alpha=0.5, color="tab:blue")
-#     # ax.plot(x, rv.pdf(x), color="tab:blue")
-#     # plt.show()
+    # _, ax = plt.subplots(1,1)
+    # ax.hist(rv.rvs(10_000),bins=100, density=True,  alpha=0.5, color="tab:blue")
+    # ax.plot(x, rv.pdf(x), color="tab:blue")
+    # plt.show()
     
     
-#     c_target = np.array([[  1.0, 0.8,],
-#                         [0.8,  1.0]])
+    c_target = np.array([[  1.0, 0.8,],
+                        [0.8,  1.0]])
     
-#     # rv1 = Mixture([0.7,0.3], [scipy.stats.norm(-2, 1), scipy.stats.norm(2, 1)])
-#     # rv = Gaussian_Copula(c_target, [rv1 , scipy.stats.norm()])
-#     rv1 = scipy.stats.beta(0.5, 0.5)
-#     rv = Gaussian_Copula(c_target, [rv1 , scipy.stats.norm()])
+    # rv1 = Mixture([0.7,0.3], [scipy.stats.norm(-2, 1), scipy.stats.norm(2, 1)])
+    # rv = Gaussian_Copula(c_target, [rv1 , scipy.stats.norm()])
+    rv1 = scipy.stats.beta(0.5, 0.5)
+    rv = Gaussian_Copula(c_target, [scipy.stats.gumbel_r(), scipy.stats.norm()])
     
-#     x = np.linspace(-8,8,1000)
-#     _, ax = plt.subplots(1,2)
-#     y = rv.rvs(10_000)
-#     ax[0].hist(y[:,0],bins=100, density=True,  alpha=0.5, color="tab:blue")
-#     ax[0].plot(x, rv1.pdf(x), color="tab:blue")
+    x = np.linspace(-8,8,1000)
+    _, ax = plt.subplots(1,2)
+    y = rv.rvs(10_000)
+    ax[0].hist(y[:,0],bins=100, density=True,  alpha=0.5, color="tab:blue")
+    ax[0].plot(x, rv1.pdf(x), color="tab:blue")
     
 #     # ax[0].hist(rv1.rvs(10_000),bins=100, density=True,  alpha=0.5, color="tab:blue")
 #     print(np.corrcoef(y[:,0], y[:,1]))

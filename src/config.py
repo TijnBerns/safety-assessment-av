@@ -33,7 +33,7 @@ class Config():
         0.20,
         0.30
     ]
-    num_estimates = 100
+    num_estimates = 10
     num_eval = 400
     evaluation_interval = {}
     
@@ -46,7 +46,8 @@ class Config():
         'bivariate_guassian_a': scipy.stats.multivariate_normal([0, 0], [[2, 0.6], [0.6, 1.0]]),
         'bivariate_guassian_b': scipy.stats.multivariate_normal([0, 0], [[2, 1.0], [1.0, 1.0]]),
         'bivariate_gaussian_c': scipy.stats.multivariate_normal([0, 0], [[2, 1.4], [1.4, 1.0]]),  
-        'gumbel_a': dist.Gaussian_Copula(c_target, [scipy.stats.gumbel_r(), scipy.stats.norm(0.0, 0.0)]), 
+        'gumbel_a': dist.Gaussian_Copula(c_target, [scipy.stats.laplace(), scipy.stats.norm()]), 
+        'gumbel_a': dist.Gaussian_Copula(c_target, [scipy.stats.gumbel_r(), scipy.stats.norm()]), 
         'laplace_a': dist.Gaussian_Copula(c_target, [scipy.stats.laplace(), scipy.stats.norm(0.0, 0.0)]),
     }
     
@@ -60,8 +61,8 @@ class Config():
     }
 
     # Path variables
-    # path_estimates = Path('/home/tberns/safety-assessment-av/estimates') # For run on cluster
-    path_estimates = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates') # For local run
+    path_estimates = Path('/home/tberns/safety-assessment-av/estimates') # For run on cluster
+    # path_estimates = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates') # For local run
     
     # Neural network parameters
     nn_training_steps = 10_000
