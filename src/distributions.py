@@ -27,7 +27,7 @@ class Gaussian_Copula(Distribution):
     def rvs(self,  n: int, random_state: Any = None):
         
         r0 = [0] * self.cor.shape[0]
-        mv_norm = multivariate_normal(mean=r0, cov=c_target)
+        mv_norm = multivariate_normal(mean=r0, cov=self.cor)
         rand_Nnorm = mv_norm.rvs(n, random_state=random_state)
         
         # step 2: convert the r * N multivariate variates to scores
