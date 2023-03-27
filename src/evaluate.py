@@ -103,7 +103,7 @@ def evaluation_pipeline(path: Path):
 
 
 if __name__ == "__main__":
-    path = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined/multimodal_a')
+    path = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined_estimator/bivariate_guassian_b')
     evaluation_pipeline(path)
 
     # res = {}

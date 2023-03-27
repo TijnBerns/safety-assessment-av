@@ -99,3 +99,11 @@ def annotate_data(data: np.ndarray, bins: np.ndarray, targets: np.ndarray = None
             k += 1
 
     return samples, targets
+
+
+def get_evaluation_interval(distribution, random_state: int, n: int):
+    """Gets the interval on which most of the data is distributed.
+    """
+    print(distribution)
+    r = distribution.rvs(1_000_000, random_state=random_state)
+    return np.linspace(np.floor(np.min(r)), np.ceil(np.max(r)), n)

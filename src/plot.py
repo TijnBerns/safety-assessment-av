@@ -129,7 +129,7 @@ def plot_pdf(path: Path, save):
     
             
 if __name__ == "__main__":
-    estimates_path = Path("/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde/multimodal_a")
+    estimates_path = Path("/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined_estimator/bivariate_guassian_b")
     results_path = estimates_path / 'results.csv'
     results_df = pd.read_csv(results_path)
     

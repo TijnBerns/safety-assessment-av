@@ -40,10 +40,8 @@ def combined_data_pipline(baseline_estimator: Estimator, combined_estimator: Est
         combined_estimator (Estimator): Estimator on which combined data is fitted
         root (Path): Root folder to which results will be saved.
     """
-    # Define evaluation interval
-    x_values = cfg.evaluation_interval
-
     for distribution_str, distribution in cfg.distributions.items():
+        x_values = data_utils.get_evaluation_interval(cfg.single_distributions[distribution_str], cfg.seed, cfg.num_eval)
         true = cfg.single_distributions[distribution_str].pdf(x_values)
 
         for p_edge, num_normal, num_edge in product(cfg.p_edge, cfg.num_normal, cfg.num_edge):
@@ -90,10 +88,9 @@ def combined_estimator_pipeline(baseline_estimator: Estimator, normal_estimator:
         edge_estimator (Estimator): Estimator on which filtered edge data is fitted
         root (Path): Root folder to which results will be saved.
     """
-    # Define evaluation interval
-    x_values = cfg.evaluation_interval
 
     for distribution_str, distribution in cfg.distributions.items():
+        x_values = data_utils.get_evaluation_interval(cfg.single_distributions[distribution_str], cfg.seed, cfg.num_eval)
         true = cfg.single_distributions[distribution_str].pdf(x_values)
 
         for p_edge, num_normal, num_edge in product(cfg.p_edge, cfg.num_normal, cfg.num_edge):
