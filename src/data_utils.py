@@ -31,7 +31,7 @@ def generate_data(ditribution, frac_edge: float, num_norm, num_edge, dim: int = 
         edge_data = np.concatenate((edge_data, new_edge_data)) if edge_data.size else new_edge_data
         
         if len(edge_data) > num_edge:
-            edge_data = new_edge_data[:num_edge]
+            edge_data = edge_data[:num_edge]
             break
         
         data = ditribution.rvs(100_000)
@@ -66,8 +66,11 @@ def combine_data(normal_data: np.ndarray, edge_data: np.ndarray, threshold: floa
     # Split the normal data based on threshold
     normal_data_only, edge_from_normal_data = split_data(normal_data, threshold)
     
-    repeat_factor = int(1 + 1 // p_edge)
-    remainder = round((1 % p_edge) * (len(normal_data_only)))
+    # c = len(edge_from_normal_data) + len(edge_data) - p_edge * len(edge_from_normal_data) - p_edge * len(edge_data) / (p_edge * len(normal_data_only))
+    
+    repeat_factor = np.floor((len(edge_from_normal_data) + len(edge_data)) / (p_edge * len(normal_data_only)))
+    remainder = int((len(normal_data) + len(edge_data) / p_edge) % len(normal_data_only))
+
 
     # Create combined data tensor
     combined_data = np.repeat(normal_data_only, repeat_factor, axis=0)

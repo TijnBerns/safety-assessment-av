@@ -19,8 +19,6 @@ def set_device() -> Tuple[str, str]:
 
     if jobid == default_jobid and device != "cpu":
         exit("Running on GPU without use of slurm!")
-    elif jobid != default_jobid and device == "cpu":
-        exit("Running slurm job without using GPU!")
 
     return device, jobid
 

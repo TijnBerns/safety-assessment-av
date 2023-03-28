@@ -46,18 +46,18 @@ class Config():
         'bivariate_guassian_a': scipy.stats.multivariate_normal([0, 0], [[2, 0.6], [0.6, 1.0]]),
         'bivariate_guassian_b': scipy.stats.multivariate_normal([0, 0], [[2, 1.0], [1.0, 1.0]]),
         'bivariate_gaussian_c': scipy.stats.multivariate_normal([0, 0], [[2, 1.4], [1.4, 1.0]]),  
-        'gumbel_a': dist.Gaussian_Copula(c_target, [scipy.stats.laplace(), scipy.stats.norm()]), 
-        'gumbel_a': dist.Gaussian_Copula(c_target, [scipy.stats.gumbel_r(), scipy.stats.norm()]), 
-        'laplace_a': dist.Gaussian_Copula(c_target, [scipy.stats.laplace(), scipy.stats.norm(0.0, 0.0)]),
+        # 'gumbel_a': dist.Gaussian_Copula(c_target, [scipy.stats.gumbel_r(), scipy.stats.norm()]), 
+        # 'beta_a': dist.Gaussian_Copula(c_target, [scipy.stats.beta(0.5,0.5), scipy.stats.norm()]), 
+        # 'laplace_a': dist.Gaussian_Copula(c_target, [scipy.stats.laplace(), scipy.stats.norm()]),
     }
     
     single_distributions = {
         'bivariate_guassian_a': scipy.stats.norm(0.0, np.sqrt(2.0)), 
         'bivariate_guassian_b': scipy.stats.norm(0.0, np.sqrt(2.0)), 
-        'bivariate_guassian_c': scipy.stats.norm(0.0, np.sqrt(2.0)), 
-        'gumbel_a' : scipy.stats.gumbel_r(),
-        'laplace_a': scipy.stats.laplace(),
-        'beta_a': scipy.stats.beta(0.5,0.5)
+        'bivariate_gaussian_c': scipy.stats.norm(0.0, np.sqrt(2.0)), 
+        # 'gumbel_a' : scipy.stats.gumbel_r(),
+        # 'laplace_a': scipy.stats.laplace(),
+        # 'beta_a': scipy.stats.beta(0.5,0.5)
     }
 
     # Path variables
