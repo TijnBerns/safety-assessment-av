@@ -55,8 +55,7 @@ def combined_data_pipline(baseline_estimator: Estimator, combined_estimator: Est
 
                 for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_edge} p_edge={p_edge}'):
                     # Generate data
-                    normal_data, edge_data, threshold = data_utils.generate_data(
-                        distribution, p_edge, num_normal, num_edge)
+                    normal_data, edge_data, threshold = data_utils.generate_data(distribution, p_edge, num_normal, num_edge, random_state=run)
 
                     # Filter edge and normal data
                     p_edge_estimate = data_utils.compute_p_edge(normal_data, threshold)
@@ -106,7 +105,7 @@ def combined_estimator_pipeline(baseline_estimator: Estimator, normal_estimator:
 
                 for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_edge} p_edge={p_edge}'):
                     # Generate data
-                    normal_data, edge_data, threshold = data_utils.generate_data(distribution, p_edge, num_normal, num_edge)
+                    normal_data, edge_data, threshold = data_utils.generate_data(distribution, p_edge, num_normal, num_edge, random_state=run)
                     normal_data_filtered, edge_data_filtered = data_utils.filter_data(normal_data, edge_data, threshold)
 
                     # Filter edge and normal data
@@ -161,6 +160,7 @@ class NN_Estimator(Estimator):
         # Label training data
         _, bins = np.histogram(data, len(data))
         samples, _ = data_utils.annotate_data(data, bins)
+        samples = list(set(samples))
         
         # construct dataloaders
         loader = DataLoader(samples, shuffle=True, batch_size=cfg.nn_batch_size, drop_last=True)
@@ -183,6 +183,7 @@ class NN_Estimator(Estimator):
         # Fit the model
         trainer = pl.Trainer(max_steps=cfg.nn_training_steps,
                              inference_mode=False,
+                             callbacks=[checkpointer],
                              logger=False,
                              accelerator=device)
 

@@ -23,14 +23,15 @@ def evaluate(dataframe: pd.DataFrame):
 
     # The true pdf values
     true = dataframe['true'].to_numpy()
-    true_matrix = np.tile(true, (estimates.shape[-1], 1))
+    # true_matrix = np.tile(true, (estimates.shape[-1], 1))
 
     # Compute various metrics
-    sse = np.square(estimates.T - true_matrix).sum(axis=0)
+    # sse = np.square(estimates.T - true_matrix).mean(axis=0)
+    
     mean = np.mean(estimates.T, axis=0)
     var = np.var(estimates.T, axis=0)
 
-    return sse, var
+    return np.abs(mean - true), var
 
 
 def plot_estimate(true, estimates, x_values):
@@ -100,11 +101,40 @@ def evaluation_pipeline(path: Path):
 
     # plt.savefig('test')
     save_csv(path / 'results.csv', pd.DataFrame(results))
+    
+def mse(df):
+    run_cols = [col for col in df if col.startswith('run')]
+    estimates = df[run_cols].to_numpy()
+    mean = estimates.mean(axis=1)
+    true = df['true'] 
+    
+    return np.abs(mean - true)
+    print(estimates)
+    breakpoint()
+
 
 
 if __name__ == "__main__":
-    path = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined_estimator/bivariate_guassian_b')
-    evaluation_pipeline(path)
+    nn_path = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/nn_approach/bivariate_guassian_b/p_edge_0.1.n_normal_10000.n_edge_10000')
+    kde_path = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined_estimator/bivariate_guassian_b/p_edge_0.1.n_normal_10000.n_edge_10000')
+    
+    
+    kde = pd.read_csv(kde_path / "p_edge_0.1.n_normal_10000.n_edge_10000.improved.csv")
+    nn = pd.read_csv(nn_path / "p_edge_0.1.n_normal_10000.n_edge_10000.improved.csv")
+    nn2 = pd.read_csv(nn_path / "p_edge_0.1.n_normal_10000.n_edge_10000.baseline.csv")
+    
+    
+    kde_error = mse(kde)
+    nn_error = mse(nn)
+    nn2_error = mse(nn2)
+    
+    print(f'kde: {kde_error.mean()}')
+    print(f'nn: {nn_error.mean()}')
+    
+    print(f'# nn error < kde error: {((kde_error - nn_error) > 0).sum()}')
+    print(np.where((kde_error - nn_error) > 0))
+    print(np.where((nn2_error - nn_error) > 0))
+    
 
     # res = {}
     # for n in [100, 1000, 10_000]:

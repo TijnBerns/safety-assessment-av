@@ -61,8 +61,8 @@ class Config():
     }
 
     # Path variables
-    path_estimates = Path('/home/tberns/safety-assessment-av/estimates') # For run on cluster
-    # path_estimates = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates') # For local run
+    # path_estimates = Path('/home/tberns/safety-assessment-av/estimates') # For run on cluster
+    path_estimates = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates') # For local run
     
     # Neural network parameters
     nn_training_steps = 10_000

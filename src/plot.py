@@ -7,6 +7,7 @@ import numpy as np
 from evaluate import evaluate
 from config import Config as cfg 
 from utils import variables_from_filename
+from evaluate import evaluation_pipeline
 
 cmap = plt.get_cmap('viridis')
 colors = cmap(np.linspace(0, 1, len(cfg.p_edge)))
@@ -18,7 +19,7 @@ p_edge_colors = {str(k): v for k, v in zip(cfg.p_edge, colors)}
 def plot_diff_grouped_by_n(results_df: pd.DataFrame, save:str):
     _, axs = plt.subplots(1,2, figsize=(10,5) )
     axs[0].set_ylabel('improved var / baseline var')
-    axs[1].set_ylabel('improved sse / baseline sse')
+    axs[1].set_ylabel('improved error / baseline error')
     
     for ax in axs:
         ax.set_xlabel('p_edge')
@@ -35,8 +36,8 @@ def plot_diff_grouped_by_n(results_df: pd.DataFrame, save:str):
 
 def plot_diff_grouped_by_p_edge(results_df: pd.DataFrame, save:str):
     _, axs = plt.subplots(1,2, figsize=(10,5) )
-    axs[0].set_ylabel('improved var / baseline var')
-    axs[1].set_ylabel('improved sse / baseline sse')
+    axs[0].set_ylabel('improved var - baseline var')
+    axs[1].set_ylabel('improved error - baseline error')
     
     for ax in axs:
         ax.set_xlabel('n')
@@ -62,7 +63,7 @@ def plot_diff(path: Path, save):
         ax.set_xlabel('x')
     
     axs[0].set_ylabel('improved var / baseline var')
-    axs[1].set_ylabel('improved sse / baseline sse')
+    axs[1].set_ylabel('improved error / baseline error')
     
     for f in tqdm(list(path.glob('**/*'))):
         if not f.is_dir():
@@ -129,13 +130,17 @@ def plot_pdf(path: Path, save):
     
             
 if __name__ == "__main__":
-    estimates_path = Path("/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined_estimator/bivariate_guassian_b")
-    results_path = estimates_path / 'results.csv'
-    results_df = pd.read_csv(results_path)
-    
-    plot_diff(estimates_path, save=Path('img') / (estimates_path.parent.name + '.' + estimates_path.name + '.results.png'))
-    plot_diff_grouped_by_n(results_df, save=Path('img') / (estimates_path.parent.name + '.' + estimates_path.name + '.grouped_by_n.png'))
-    plot_pdf(estimates_path, save=Path('img') / (estimates_path.parent.name + '.' + estimates_path.name + '.pdf_estimate.png'))
+    for estimates_path in Path("/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/nn_approach").glob('*/'):
+        if not estimates_path.is_dir():
+            continue
+
+        evaluation_pipeline(estimates_path)
+        results_path = estimates_path / 'results.csv'
+        results_df = pd.read_csv(results_path)
+        
+        plot_diff(estimates_path, save=Path('img') / (estimates_path.parent.name + '.' + estimates_path.name + '.results.png'))
+        plot_diff_grouped_by_n(results_df, save=Path('img') / (estimates_path.parent.name + '.' + estimates_path.name + '.grouped_by_n.png'))
+        plot_pdf(estimates_path, save=Path('img') / (estimates_path.parent.name + '.' + estimates_path.name + '.pdf_estimate.png'))
     
     # plot_diff_grouped_by_p_edge(results_df, save=Path('img') / (estimates_path.name + '.grouped_by_p_edge.png'))
     
