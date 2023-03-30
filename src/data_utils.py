@@ -17,28 +17,28 @@ def determine_threshold(data: np.ndarray, frac_edge: float, dim: int = -1):
     return y_sorted[i]
 
 
-def generate_data(ditribution, frac_edge: float, num_norm, num_edge, dim: int = 1) -> Tuple[np.ndarray, np.ndarray, float]:
+def generate_data(ditribution, frac_edge: float, num_norm, num_edge, dim: int = 1, random_state=0) -> Tuple[np.ndarray, np.ndarray, float]:
     """Generate normal and edge data from multivariate normal distribution
     """
     # Set threshold on dim such that
-    data = ditribution.rvs(1_000_000)
+    data = ditribution.rvs(1_000_000, random_state=random_state)
     threshold = determine_threshold(data, frac_edge)
 
     # Filter edge data, and redraw sample for normal data
     edge_data = np.array([])
+    i = 0
     while True:
+        i += 1
         new_edge_data = data[data[:, dim] > threshold]
         edge_data = np.concatenate((edge_data, new_edge_data)) if edge_data.size else new_edge_data
         
         if len(edge_data) > num_edge:
-            new_edge_data = new_edge_data[:num_edge]
+            edge_data = edge_data[:num_edge]
             break
         
-        data = ditribution.rvs(100_000)
+        data = ditribution.rvs(100_000, random_state=random_state + i)
         
-    
-    
-    normal_data = ditribution.rvs(num_norm)
+    normal_data = ditribution.rvs(num_norm, random_state=random_state)
     return normal_data, edge_data, threshold
 
 
@@ -68,8 +68,11 @@ def combine_data(normal_data: np.ndarray, edge_data: np.ndarray, threshold: floa
     # Split the normal data based on threshold
     normal_data_only, edge_from_normal_data = split_data(normal_data, threshold)
     
-    repeat_factor = int(1 + 1 // p_edge)
-    remainder = round((1 % p_edge) * (len(normal_data)))
+    # c = len(edge_from_normal_data) + len(edge_data) - p_edge * len(edge_from_normal_data) - p_edge * len(edge_data) / (p_edge * len(normal_data_only))
+    
+    repeat_factor = np.floor((len(edge_from_normal_data) + len(edge_data)) / (p_edge * len(normal_data_only)))
+    remainder = int((len(normal_data) + len(edge_data) / p_edge) % len(normal_data_only))
+
 
     # Create combined data tensor
     combined_data = np.repeat(normal_data_only, repeat_factor, axis=0)
@@ -99,3 +102,11 @@ def annotate_data(data: np.ndarray, bins: np.ndarray, targets: np.ndarray = None
             k += 1
 
     return samples, targets
+
+
+def get_evaluation_interval(distribution, random_state: int, n: int):
+    """Gets the interval on which most of the data is distributed.
+    """
+    print(distribution)
+    r = distribution.rvs(1_000_000, random_state=random_state)
+    return np.linspace(np.floor(np.min(r)), np.ceil(np.max(r)), n)

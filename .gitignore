@@ -2,7 +2,7 @@ img/
 lightning_logs/
 related_work/
 notebooks/
-estimates/
+# estimates/
 data/
 checkpoints/
 logs/
@@ -15,6 +15,7 @@ venv*
 logs*
 # C extensions
 *.so
+estimates_back*
 
 # Distribution / packaging
 .Python
