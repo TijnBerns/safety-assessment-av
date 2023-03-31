@@ -33,7 +33,7 @@ class Config():
         0.20,
         0.30
     ]
-    num_estimates = 10
+    num_estimates = 100
     num_eval = 400
     evaluation_interval = {}
     
@@ -55,9 +55,9 @@ class Config():
         'bivariate_guassian_a': scipy.stats.norm(0.0, np.sqrt(2.0)), 
         'bivariate_guassian_b': scipy.stats.norm(0.0, np.sqrt(2.0)), 
         'bivariate_gaussian_c': scipy.stats.norm(0.0, np.sqrt(2.0)), 
-        # 'gumbel_a' : scipy.stats.gumbel_r(),
-        # 'laplace_a': scipy.stats.laplace(),
-        # 'beta_a': scipy.stats.beta(0.5,0.5)
+        'gumbel_a' : scipy.stats.gumbel_r(),
+        'laplace_a': scipy.stats.laplace(),
+        'beta_a': scipy.stats.beta(0.5,0.5)
     }
 
     # Path variables
@@ -71,4 +71,7 @@ class Config():
     nn_num_hidden_nodes = 25
     nn_num_hidden_layers = 3
     
+# Gaussian
+# Amount of data
+# 
 

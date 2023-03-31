@@ -1,3 +1,17 @@
+import sys, os
+
+# getting the name of the directory
+# where the this file is present.
+current = os.path.dirname(os.path.realpath(__file__))
+
+# Getting the parent directory name
+# where the current directory is present.
+parent = os.path.dirname(current)
+
+# adding the parent directory to
+# the sys.path.
+sys.path.append(parent)
+
 from abc import ABC
 import scipy
 import scipy.stats
@@ -19,6 +33,7 @@ from itertools import product
 from pathlib import Path
 from utils import save_csv
 import pandas as pd
+from stats import KDE
 
 
 class Estimator(ABC):
@@ -47,7 +62,7 @@ def combined_data_pipline(baseline_estimator: Estimator, combined_estimator: Est
         for p_edge in cfg.p_edge:
             for num_normal in cfg.num_normal:
                 num_edge = num_normal
-                thresholds = {}
+                threshold = cfg.single_distributions[distribution_str].ppf(1- p_edge)
 
                 # Initialize dicts to store results
                 baseline_estimates = {"x": x_values, "true": true}
@@ -55,7 +70,7 @@ def combined_data_pipline(baseline_estimator: Estimator, combined_estimator: Est
 
                 for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_edge} p_edge={p_edge}'):
                     # Generate data
-                    normal_data, edge_data, threshold = data_utils.generate_data(distribution, p_edge, num_normal, num_edge, random_state=run)
+                    normal_data, edge_data, threshold = data_utils.generate_data(distribution, num_normal, num_edge, threshold, random_state=run)
 
                     # Filter edge and normal data
                     p_edge_estimate = data_utils.compute_p_edge(normal_data, threshold)
@@ -76,9 +91,6 @@ def combined_data_pipline(baseline_estimator: Estimator, combined_estimator: Est
                     save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.improved.csv',
                             df=pd.DataFrame(improved_estimates))
 
-                    thresholds[f"run_{run}"] = threshold
-                    with open(parent / 'thresholds.json', 'w') as f:
-                        json.dump(thresholds, f, indent=2)
                     
 def combined_estimator_pipeline(baseline_estimator: Estimator, normal_estimator: Estimator, edge_estimator: Estimator, root: Path, *args, **kwargs):
     """Default estimation pipeline. Takes three estimators. Combines two esitmators using p_edge and p_normal, the other serves as a baseline.
@@ -97,7 +109,7 @@ def combined_estimator_pipeline(baseline_estimator: Estimator, normal_estimator:
         for p_edge in cfg.p_edge:
             for num_normal in cfg.num_normal:
                 num_edge = num_normal
-                thresholds = {}
+                threshold = cfg.single_distributions[distribution_str].ppf(1- p_edge)
 
                 # Initialize dicts to store results
                 baseline_estimates = {"x": x_values, "true": true}
@@ -105,7 +117,7 @@ def combined_estimator_pipeline(baseline_estimator: Estimator, normal_estimator:
 
                 for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_edge} p_edge={p_edge}'):
                     # Generate data
-                    normal_data, edge_data, threshold = data_utils.generate_data(distribution, p_edge, num_normal, num_edge, random_state=run)
+                    normal_data, edge_data = data_utils.generate_data(distribution, num_normal, num_edge, threshold, random_state=run)
                     normal_data_filtered, edge_data_filtered = data_utils.filter_data(normal_data, edge_data, threshold)
 
                     # Filter edge and normal data
@@ -128,26 +140,24 @@ def combined_estimator_pipeline(baseline_estimator: Estimator, normal_estimator:
                     save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.improved.csv',
                             df=pd.DataFrame(improved_estimates))
 
-                    thresholds[f"run_{run}"] = threshold
-                    with open(parent / 'thresholds.json', 'w') as f:
-                        json.dump(thresholds, f, indent=2)
-
 
     
 class KDE_Estimator(Estimator):
     def __init__(self) -> None:
         super().__init__()
-        self.model = None
+        self.model: KDE = None
         
     def fit(self, data: np.ndarray):
-        self.model = scipy.stats.gaussian_kde(data.T)
+        self.model = KDE(data.T)
+        self.model.compute_bandwidth()
         
     def estimate(self, x_values):
-        res = np.empty_like(x_values)
-        for i in range(len(x_values)):
-            res[i] = self.model(x_values[i])
+        # res = np.empty_like(x_values)
+        # for i in range(len(x_values)):
+        #     res[i] = self.model(x_values[i])
 
-        return res
+        # return self.model(x_values)
+        return self.model.score_samples(x_values)
 
 
 class NN_Estimator(Estimator):

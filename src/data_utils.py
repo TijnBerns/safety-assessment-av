@@ -17,12 +17,11 @@ def determine_threshold(data: np.ndarray, frac_edge: float, dim: int = -1):
     return y_sorted[i]
 
 
-def generate_data(ditribution, frac_edge: float, num_norm, num_edge, dim: int = 1, random_state=0) -> Tuple[np.ndarray, np.ndarray, float]:
+def generate_data(ditribution, num_norm, num_edge, threshold, dim:int=-1, random_state=0) -> Tuple[np.ndarray, np.ndarray, float]:
     """Generate normal and edge data from multivariate normal distribution
     """
     # Set threshold on dim such that
     data = ditribution.rvs(1_000_000, random_state=random_state)
-    threshold = determine_threshold(data, frac_edge)
 
     # Filter edge data, and redraw sample for normal data
     edge_data = np.array([])
@@ -38,8 +37,8 @@ def generate_data(ditribution, frac_edge: float, num_norm, num_edge, dim: int = 
         
         data = ditribution.rvs(100_000, random_state=random_state + i)
         
-    normal_data = ditribution.rvs(num_norm, random_state=random_state)
-    return normal_data, edge_data, threshold
+    normal_data = ditribution.rvs(num_norm, random_state=random_state + 1 + i)
+    return normal_data, edge_data
 
 
 def split_data(data: np.ndarray, threshold: float, dim=-1):

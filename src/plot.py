@@ -130,7 +130,7 @@ def plot_pdf(path: Path, save):
     
             
 if __name__ == "__main__":
-    for estimates_path in Path("/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/nn_approach").glob('*/'):
+    for estimates_path in Path("/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined_estimator").glob('*/'):
         if not estimates_path.is_dir():
             continue
 

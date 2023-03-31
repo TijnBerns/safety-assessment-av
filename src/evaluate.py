@@ -23,15 +23,18 @@ def evaluate(dataframe: pd.DataFrame):
 
     # The true pdf values
     true = dataframe['true'].to_numpy()
-    # true_matrix = np.tile(true, (estimates.shape[-1], 1))
 
     # Compute various metrics
-    # sse = np.square(estimates.T - true_matrix).mean(axis=0)
-    
     mean = np.mean(estimates.T, axis=0)
-    var = np.var(estimates.T, axis=0)
+    var = np.std(estimates.T, axis=0)
 
-    return np.abs(mean - true), var
+    # Compute mean squared error at every point
+    mse = np.zeros_like(true)
+    for e in range(len(estimates)):
+        se = np.square(estimates[e] - true[e])
+        mse[e] = np.mean(se)
+
+    return mse, mean, var
 
 
 def plot_estimate(true, estimates, x_values):
@@ -102,69 +105,23 @@ def evaluation_pipeline(path: Path):
     # plt.savefig('test')
     save_csv(path / 'results.csv', pd.DataFrame(results))
     
-def mse(df):
-    run_cols = [col for col in df if col.startswith('run')]
-    estimates = df[run_cols].to_numpy()
-    mean = estimates.mean(axis=1)
-    true = df['true'] 
-    
-    return np.abs(mean - true)
-    print(estimates)
-    breakpoint()
-
-
 
 if __name__ == "__main__":
-    nn_path = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/nn_approach/bivariate_guassian_b/p_edge_0.1.n_normal_10000.n_edge_10000')
-    kde_path = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined_estimator/bivariate_guassian_b/p_edge_0.1.n_normal_10000.n_edge_10000')
+    path = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined_estimator/bivariate_gaussian_c/p_edge_0.1.n_normal_500.n_edge_500/p_edge_0.1.n_normal_500.n_edge_500.improved.csv')
+    df = pd.read_csv(path)
+    mse, mean, var = evaluate(df)
+    x_values = df['x']
     
+    fig, axs = plt.subplots(1,1)
+    axs.plot(x_values, mean)
+    axs.fill_between(x_values, mean + var, mean - var, alpha=0.5)
+    axs.plot(x_values, df['true'])
+    plt.show()
     
-    kde = pd.read_csv(kde_path / "p_edge_0.1.n_normal_10000.n_edge_10000.improved.csv")
-    nn = pd.read_csv(nn_path / "p_edge_0.1.n_normal_10000.n_edge_10000.improved.csv")
-    nn2 = pd.read_csv(nn_path / "p_edge_0.1.n_normal_10000.n_edge_10000.baseline.csv")
-    
-    
-    kde_error = mse(kde)
-    nn_error = mse(nn)
-    nn2_error = mse(nn2)
-    
-    print(f'kde: {kde_error.mean()}')
-    print(f'nn: {nn_error.mean()}')
-    
-    print(f'# nn error < kde error: {((kde_error - nn_error) > 0).sum()}')
-    print(np.where((kde_error - nn_error) > 0))
-    print(np.where((nn2_error - nn_error) > 0))
-    
-
-    # res = {}
-    # for n in [100, 1000, 10_000]:
-    #     for f in path.rglob(f"*{n}.*{n}.*.csv"):
-    #         try:
-    #             baseline_df = pd.read_csv(f.parent / (f.parent.name + '.baseline.csv'))
-    #             improved_df = pd.read_csv(f.parent / (f.parent.name + '.improved.csv'))
-    #             baseline_sse, improved_var  = evaluate(baseline_df)
-    #             improved_sse, improved_var = evaluate(improved_df)
-    #         except(Exception):
-    #             continue
-
-    #         main(f.parent)
-
-    #         delta_sse = improved_sse.mean() - baseline_sse.mean()
-    #         improved_var = improved_var.mean()
-    #         baseline_var = baseline_var.mean()
-
-    #         p_edge = f.name.split('.n')[0][7:]
-
-    #         res[p_edge] = (improved_sse - baseline_sse)
-
-    #     res_a[n] = {key: val for key, val in sorted(res.items(), key = lambda ele: ele[0])}
-
-    # plt.figure()
-    # for n in res_a.keys():
-    #     plt.plot(res_a[n].keys(), res_a[n].values(), label=f'$n=m={n}$')
-    # plt.legend()
-    # plt.xlabel('$P$ edge')
-    # plt.ylabel('$\Delta$ SSE')
-
-    # plt.title('$\Delta$ SSE against the probability of observing edge scenarios')
-    # plt.savefig('img/delta_SSE')
+    # fig, axs = plt.subplots(1,1)
+    # run_cols = [col for col in df if col.startswith('run')]
+    # estimates = df[run_cols].to_numpy()
+    # axs.plot(x_values, estimates.mean(axis=1), label='estimate')
+    # axs.plot(x_values, df['true'], label='true')
+    # axs.legend()
+    # plt.savefig('pdf')
