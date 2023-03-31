@@ -15,23 +15,23 @@ class Config():
     # Variables
     num_normal = [
         100,
-        1000, 
-        10_000
+        # 1000, 
+        # 10_000
         ]
     
     num_edge = [
         100, 
-        1000, 
-        10_000
+        # 1000, 
+        # 10_000
         ]
     
     p_edge = [
-        0.01,
-        0.02,
-        0.04,
+        # 0.01,
+        # 0.02,
+        # 0.04,
         0.10,
-        0.20,
-        0.30
+        # 0.20,
+        # 0.30
     ]
     num_estimates = 100
     num_eval = 400
@@ -43,9 +43,9 @@ class Config():
 
     # Distributions
     distributions = {
-        'bivariate_guassian_a': scipy.stats.multivariate_normal([0, 0], [[2, 0.6], [0.6, 1.0]]),
-        'bivariate_guassian_b': scipy.stats.multivariate_normal([0, 0], [[2, 1.0], [1.0, 1.0]]),
-        'bivariate_gaussian_c': scipy.stats.multivariate_normal([0, 0], [[2, 1.4], [1.4, 1.0]]),  
+        # 'bivariate_guassian_a': scipy.stats.multivariate_normal([0, 0], [[2, 0.6], [0.6, 1.0]]),
+        # 'bivariate_guassian_b': scipy.stats.multivariate_normal([0, 0], [[2, 1.0], [1.0, 1.0]]),
+        # 'bivariate_gaussian_c': scipy.stats.multivariate_normal([0, 0], [[2, 1.4], [1.4, 1.0]]),  
         # 'gumbel_a': dist.Gaussian_Copula(c_target, [scipy.stats.gumbel_r(), scipy.stats.norm()]), 
         # 'beta_a': dist.Gaussian_Copula(c_target, [scipy.stats.beta(0.5,0.5), scipy.stats.norm()]), 
         # 'laplace_a': dist.Gaussian_Copula(c_target, [scipy.stats.laplace(), scipy.stats.norm()]),

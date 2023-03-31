@@ -107,7 +107,7 @@ def evaluation_pipeline(path: Path):
     
 
 if __name__ == "__main__":
-    path = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined_estimator/bivariate_gaussian_c/p_edge_0.1.n_normal_500.n_edge_500/p_edge_0.1.n_normal_500.n_edge_500.improved.csv')
+    path = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates/kde_combined_estimator/bivariate_guassian_b/p_edge_0.1.n_normal_1000.n_edge_1000/p_edge_0.1.n_normal_1000.n_edge_1000.improved.csv')
     df = pd.read_csv(path)
     mse, mean, var = evaluate(df)
     x_values = df['x']
