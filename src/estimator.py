@@ -56,13 +56,13 @@ def combined_data_pipline(baseline_estimator: Estimator, combined_estimator: Est
         root (Path): Root folder to which results will be saved.
     """
     for distribution_str, distribution in cfg.distributions.items():
-        x_values = data_utils.get_evaluation_interval(cfg.single_distributions[distribution_str], cfg.seed, cfg.num_eval)
-        true = cfg.single_distributions[distribution_str].pdf(x_values)
+        x_values = data_utils.get_evaluation_interval(cfg.single_distributions_x1[distribution_str], cfg.seed, cfg.num_eval)
+        true = cfg.single_distributions_x1[distribution_str].pdf(x_values)
 
         for p_edge in cfg.p_edge:
             for num_normal in cfg.num_normal:
                 num_edge = num_normal
-                threshold = cfg.single_distributions[distribution_str].ppf(1- p_edge)
+                threshold = scipy.stats.norm.ppf(1- p_edge)
 
                 # Initialize dicts to store results
                 baseline_estimates = {"x": x_values, "true": true}
@@ -103,13 +103,13 @@ def combined_estimator_pipeline(baseline_estimator: Estimator, normal_estimator:
     """
 
     for distribution_str, distribution in cfg.distributions.items():
-        x_values = data_utils.get_evaluation_interval(cfg.single_distributions[distribution_str], cfg.seed, cfg.num_eval)
-        true = cfg.single_distributions[distribution_str].pdf(x_values)
+        x_values = data_utils.get_evaluation_interval(cfg.single_distributions_x1[distribution_str], cfg.seed, cfg.num_eval)
+        true = cfg.single_distributions_x1[distribution_str].pdf(x_values)
 
         for p_edge in cfg.p_edge:
             for num_normal in cfg.num_normal:
                 num_edge = num_normal
-                threshold = cfg.single_distributions[distribution_str].ppf(1- p_edge)
+                threshold = scipy.stats.norm.ppf(1- p_edge)
 
                 # Initialize dicts to store results
                 baseline_estimates = {"x": x_values, "true": true}

@@ -34,7 +34,7 @@ def save_csv(path: Path, df: pd.DataFrame):
     if not parent.exists():
         parent.mkdir(parents=True)
 
-    df.to_csv(path, index=False)
+    df.to_csv(path, index=False, lineterminator='\n', sep=',')
 
 
 def rec_dd():
@@ -60,15 +60,6 @@ def variables_from_filename(f: str):
     n_normal = f_split[2][9:]
     n_edge = f_split[3][7:]
     return p_edge, n_normal, n_edge
-
-    
-def plot_pdf(x_values, distribution):
-    _, ax = plt.subplots(1,1)
-    ax.plot(x_values, distribution.pdf(x_values))
-    plt.show()
-    
-
-    
 
     
 

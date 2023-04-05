@@ -2,6 +2,7 @@ img/
 lightning_logs/
 related_work/
 notebooks/
+estimates*
 estimates/
 data/
 checkpoints/
