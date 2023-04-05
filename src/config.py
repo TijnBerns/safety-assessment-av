@@ -15,23 +15,17 @@ class Config():
     # Variables
     num_normal = [
         100,
-        # 1000, 
-        # 10_000
+        1000, 
+        10_000
         ]
     
     num_edge = [
         100, 
-        # 1000, 
-        # 10_000
+        1000, 
+        10_000
         ]
     
-    p_edge = [
-        # 0.01,
-        # 0.02,
-        # 0.04,
-        0.10,
-        # 0.20,
-        # 0.30
+    p_edge = [0.2,0.4,0.8,0.16,0.32
     ]
     num_estimates = 100
     num_eval = 400
@@ -49,9 +43,9 @@ class Config():
         'bivariate_guassian_a': dist.Gaussian_Copula(np.array([[1.0, 0.1,],[0.1,  1.0]]), [scipy.stats.norm(0, 2), scipy.stats.norm()]),
         'bivariate_guassian_b': dist.Gaussian_Copula(np.array([[1.0, 0.5,],[0.5,  1.0]]), [scipy.stats.norm(0, 2), scipy.stats.norm()]),
         'bivariate_gaussian_c': dist.Gaussian_Copula(np.array([[1.0, 0.9,],[0.9,  1.0]]), [scipy.stats.norm(0, 2), scipy.stats.norm()]),
-        'gumbel_a': dist.Gaussian_Copula(c_target, [scipy.stats.gumbel_r(), scipy.stats.norm()]), 
-        'beta_a': dist.Gaussian_Copula(c_target, [scipy.stats.beta(0.5,0.5), scipy.stats.norm()]), 
-        'laplace_a': dist.Gaussian_Copula(c_target, [scipy.stats.laplace(), scipy.stats.norm()]),
+        # 'gumbel_a': dist.Gaussian_Copula(c_target, [scipy.stats.gumbel_r(), scipy.stats.norm()]), 
+        # 'beta_a': dist.Gaussian_Copula(c_target, [scipy.stats.beta(0.5,0.5), scipy.stats.norm()]), 
+        # 'laplace_a': dist.Gaussian_Copula(c_target, [scipy.stats.laplace(), scipy.stats.norm()]),
     }
     
     single_distributions_x1 = {
@@ -65,8 +59,8 @@ class Config():
     
 
     # Path variables
-    # path_estimates = Path('/home/tberns/safety-assessment-av/estimates') # For run on cluster
-    path_estimates = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates') # For local run
+    path_estimates = Path('/home/tberns/safety-assessment-av/estimates') # For run on cluster
+    # path_estimates = Path('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates') # For local run
     
     # Neural network parameters
     nn_training_steps = 10_000

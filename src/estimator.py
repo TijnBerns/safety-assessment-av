@@ -106,39 +106,38 @@ def combined_estimator_pipeline(baseline_estimator: Estimator, normal_estimator:
         x_values = data_utils.get_evaluation_interval(cfg.single_distributions_x1[distribution_str], cfg.seed, cfg.num_eval)
         true = cfg.single_distributions_x1[distribution_str].pdf(x_values)
 
-        for p_edge in cfg.p_edge:
-            for num_normal in cfg.num_normal:
-                num_edge = num_normal
-                threshold = scipy.stats.norm.ppf(1- p_edge)
+        for p_edge, num_normal in product(cfg.p_edge, cfg.num_normal):
+            num_edge = num_normal
+            threshold = scipy.stats.norm.ppf(1- p_edge)
 
-                # Initialize dicts to store results
-                baseline_estimates = {"x": x_values, "true": true}
-                improved_estimates = {"x": x_values, "true": true}
+            # Initialize dicts to store results
+            baseline_estimates = {"x": x_values, "true": true}
+            improved_estimates = {"x": x_values, "true": true}
 
-                for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_edge} p_edge={p_edge}'):
-                    # Generate data
-                    normal_data, edge_data = data_utils.generate_data(distribution, num_normal, num_edge, threshold, random_state=run)
-                    normal_data_filtered, edge_data_filtered = data_utils.filter_data(normal_data, edge_data, threshold)
+            for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_edge} p_edge={p_edge}'):
+                # Generate data
+                normal_data, edge_data = data_utils.generate_data(distribution, num_normal, num_edge, threshold, random_state=run)
+                normal_data_filtered, edge_data_filtered = data_utils.filter_data(normal_data, edge_data, threshold)
 
-                    # Filter edge and normal data
-                    p_edge_estimate = data_utils.compute_p_edge(normal_data, threshold)
-                    p_normal_estimate = 1 - p_edge_estimate
+                # Filter edge and normal data
+                p_edge_estimate = data_utils.compute_p_edge(normal_data, threshold)
+                p_normal_estimate = 1 - p_edge_estimate
 
-                    # Fit data to estimators
-                    baseline_estimator.fit(normal_data[:, 0], **kwargs)
-                    normal_estimator.fit(normal_data_filtered[:, 0], **kwargs)
-                    edge_estimator.fit(edge_data_filtered[:, 0], **kwargs)
+                # Fit data to estimators
+                baseline_estimator.fit(normal_data[:, 0], **kwargs)
+                normal_estimator.fit(normal_data_filtered[:, 0], **kwargs)
+                edge_estimator.fit(edge_data_filtered[:, 0], **kwargs)
 
-                    # Obtain estimates
-                    baseline_estimates[f'run_{run}'] = baseline_estimator.estimate(x_values)
-                    improved_estimates[f'run_{run}'] = p_normal_estimate * normal_estimator.estimate(x_values) + p_edge_estimate * edge_estimator.estimate(x_values)              
+                # Obtain estimates
+                baseline_estimates[f'run_{run}'] = baseline_estimator.estimate(x_values)
+                improved_estimates[f'run_{run}'] = p_normal_estimate * normal_estimator.estimate(x_values) + p_edge_estimate * edge_estimator.estimate(x_values)              
 
-                    # Store results
-                    parent = root / distribution_str / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}'
-                    save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.baseline.csv',
-                            df=pd.DataFrame(baseline_estimates))
-                    save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.improved.csv',
-                            df=pd.DataFrame(improved_estimates))
+                # Store results
+                parent = root / distribution_str / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}'
+                save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.baseline.csv',
+                        df=pd.DataFrame(baseline_estimates))
+                save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.improved.csv',
+                        df=pd.DataFrame(improved_estimates))
 
 
     
