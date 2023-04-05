@@ -144,19 +144,18 @@ def combined_estimator_pipeline(baseline_estimator: Estimator, normal_estimator:
 class KDE_Estimator(Estimator):
     def __init__(self) -> None:
         super().__init__()
-        self.model: KDE = None
+        self.model: scipy.stats.gaussian_kde = None
         
     def fit(self, data: np.ndarray):
-        self.model = KDE(data.T)
-        self.model.compute_bandwidth()
+        self.model = scipy.stats.gaussian_kde(data)
         
     def estimate(self, x_values):
         # res = np.empty_like(x_values)
         # for i in range(len(x_values)):
         #     res[i] = self.model(x_values[i])
 
-        # return self.model(x_values)
-        return self.model.score_samples(x_values)
+        return self.model(x_values)
+        # return self.model.score_samples(x_values)
 
 
 class NN_Estimator(Estimator):
