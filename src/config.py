@@ -22,12 +22,17 @@ class Config():
     num_edge = [
         100, 
         1000, 
-        10_000
+        10_000,
         ]
     
-    p_edge = [0.2,0.4,0.8,0.16,0.32
+    p_edge = [
+        0.02,
+        0.04,
+        0.08,
+        0.16,
+        0.32
     ]
-    num_estimates = 100
+    num_estimates = 1
     num_eval = 400
     evaluation_interval = {}
     
@@ -37,9 +42,6 @@ class Config():
 
     # Distributions
     distributions = {
-        # 'bivariate_guassian_a': scipy.stats.multivariate_normal([0, 0], [[2.25, 0.15], [0.15, 1.0]]),
-        # 'bivariate_guassian_b': scipy.stats.multivariate_normal([0, 0], [[2.25, 0.75], [1.0, 0.75]]),
-        # 'bivariate_gaussian_c': scipy.stats.multivariate_normal([0, 0], [[2.25, 1.35], [1.35, 1.0]]),  
         'bivariate_guassian_a': dist.Gaussian_Copula(np.array([[1.0, 0.1,],[0.1,  1.0]]), [scipy.stats.norm(0, 2), scipy.stats.norm()]),
         'bivariate_guassian_b': dist.Gaussian_Copula(np.array([[1.0, 0.5,],[0.5,  1.0]]), [scipy.stats.norm(0, 2), scipy.stats.norm()]),
         'bivariate_gaussian_c': dist.Gaussian_Copula(np.array([[1.0, 0.9,],[0.9,  1.0]]), [scipy.stats.norm(0, 2), scipy.stats.norm()]),
@@ -49,9 +51,9 @@ class Config():
     }
     
     single_distributions_x1 = {
-        'bivariate_guassian_a': scipy.stats.norm(0.0, np.sqrt(2.25)), 
-        'bivariate_guassian_b': scipy.stats.norm(0.0, np.sqrt(2.25)), 
-        'bivariate_gaussian_c': scipy.stats.norm(0.0, np.sqrt(2.25)), 
+        'bivariate_guassian_a': scipy.stats.norm(0, 2), 
+        'bivariate_guassian_b': scipy.stats.norm(0, 2), 
+        'bivariate_gaussian_c': scipy.stats.norm(0, 2), 
         'gumbel_a' : scipy.stats.gumbel_r(),
         'laplace_a': scipy.stats.laplace(),
         'beta_a': scipy.stats.beta(0.5,0.5)
@@ -74,4 +76,3 @@ class Config():
 # p edge:           0.02, 0.04, 0.08, 0.16, 0.32
 # correlation:      0.9, 0.1, 0.5
 # 
-

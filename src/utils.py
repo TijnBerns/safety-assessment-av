@@ -15,10 +15,10 @@ def set_device() -> Tuple[str, str]:
     """
     default_jobid = "0000000"
     jobid = os.environ.get("SLURM_JOB_ID", default_jobid)
-    device = 'cuda' if torch.cuda.is_available() and jobid != default_jobid else 'cpu'
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    if jobid == default_jobid and device != "cpu":
-        exit("Running on GPU without use of slurm!")
+    # if jobid == default_jobid and device != "cpu":
+    #     exit("Running on GPU without use of slurm!")
 
     return device, jobid
 

@@ -1,49 +1,51 @@
-# import torch
-# import scipy
-# import numpy as np
-# from config import Config as cfg
-# import data
-# import matplotlib.pyplot as plt
-# from model import FeedForward
-# from collections import defaultdict
+import sys
+import os
 
-# def plot(model, save=None, titles=defaultdict):
-#     normal_data, edge_data, _ = data_utils.generate_data(cfg.mean, cfg.cov, cfg.c)
-#     x_values = torch.linspace(min(normal_data[:, 0]), max(edge_data[:, 0]), 10000)
-#     true_cdf = scipy.stats.norm.cdf(x_values, cfg.mu_X, np.sqrt(cfg.sigma_X_sq))
+# getting the name of the directory
+# where the this file is present.
+current = os.path.dirname(os.path.realpath(__file__))
+
+# Getting the parent directory name
+# where the current directory is present.
+parent = os.path.dirname(current)
+
+# adding the parent directory to
+# the sys.path.
+sys.path.append(parent)
+
+import torch
+import scipy
+import numpy as np
+import matplotlib.pyplot as plt
+from model import FeedForward
+from collections import defaultdict
+from config import Config as cfg
+
+def main(baseline_path, improved_path):
+    baseline_model = FeedForward.load_from_checkpoint(baseline_path, num_in=1, num_hidden=cfg.nn_num_hidden_nodes, num_out=1, num_layers=cfg.nn_num_hidden_layers)
+    improved_model = FeedForward.load_from_checkpoint(improved_path, num_in=1, num_hidden=cfg.nn_num_hidden_nodes, num_out=1, num_layers=cfg.nn_num_hidden_layers)
+
+    x_values = torch.linspace(-6,6, 500)
+    base_cdf_hat = baseline_model.compute_cdf(x_values)
+    base_pdf_hat = baseline_model.compute_pdf(x_values)
+    imp_cdf_hat = improved_model.compute_cdf(x_values)
+    imp_pdf_hat = improved_model.compute_pdf(x_values)
+
+    _, axs = plt.subplots(1,2)
+    axs[0].plot(x_values, cfg.single_distributions_x1['bivariate_guassian_b'].cdf(x_values), label='true', linestyle='dotted')
+    axs[0].plot(x_values, base_cdf_hat, label='baseline', alpha=0.5)
+    axs[0].plot(x_values, imp_cdf_hat, label='improved', alpha=0.5)
+    axs[0].legend()
     
-#     # plot estimated pdf
-#     pdf_true = scipy.stats.norm.pdf(x_values, cfg.mu_X, np.sqrt(cfg.sigma_X_sq))
-#     pdf_nn = model.compute_pdf(x_values)
-#     # pdf_kde = [baseline(x) for x in x_values]
-#     _, axs = plt.subplots(1, 2, figsize=(14, 7))
+    axs[1].plot(x_values, cfg.single_distributions_x1['bivariate_guassian_b'].pdf(x_values), label='true', linestyle='dotted')
+    axs[1].plot(x_values, base_pdf_hat, label='baseline', alpha=0.5)
+    axs[1].plot(x_values, imp_pdf_hat, label='improved', alpha=0.5)
+    axs[1].legend()
+    plt.show()
 
-#     axs[0].plot(x_values, pdf_true, label='true pdf')
-#     axs[0].plot(x_values, pdf_nn, label='NN estimate')
-#     # axs[0].plot(x_values, pdf_kde, label='KDE estimate')
-#     axs[0].legend()
-#     axs[1].set_title(titles[0])
+
+if __name__ == "__main__":
+    baseline_path = 'lightning_logs/version_51/checkpoints/layers_3.neuros_25.epoch_0002.step_000020300.val-mse_0.0000.last.ckpt'
+    improved_path = 'lightning_logs/version_51/checkpoints/layers_3.neuros_25.epoch_0002.step_000020300.val-mse_0.0000.last.ckpt'
     
-#     # Plot estimated CDF vs tru
-#     cdf_nn = model.compute_cdf(x_values)
-#     axs[1].plot(true_cdf, label='True CDF')
-#     axs[1].plot(cdf_nn, label='NN estimate')
-#     axs[1].legend()
-#     axs[1].set_title(titles[1])
-
-#     if save is None:
-#         plt.show()
-#         return
-#     plt.savefig(save)
-
-
-# if __name__ == "__main__":
-#     torch.manual_seed(cfg.seed)
-#     normal_data, edge_data, p_edge = data.generate_data(cfg.mean, cfg.cov, cfg.c)
-#     counts, bins = torch.histogram(normal_data[:, 0], cfg.num_bins)
-#     emp_cdf = torch.cumsum(counts, dim=0) / len(normal_data[:, 0])
-    
-#     model = FeedForward.load_from_checkpoint('lightning_logs/version_31/checkpoints/layers_3.neuros_50.epoch_0666.step_000010000.val-mse_0.0001.last.ckpt', 
-#                                              num_in=1, num_out=1,num_hidden=50, num_layers=3)
-#     # breakpoint()
-#     plot(model, save='img/normal-no_sigmoid')
+    main(baseline_path, improved_path)

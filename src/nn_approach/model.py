@@ -33,7 +33,7 @@ class FeedForward(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         y_hat, y = self.forward(batch)
-        loss = F.mse_loss(y_hat, y)
+        loss = F.mse_loss(y_hat, y, reduction='sum')
         self.log('train_se', loss)
         return loss
 

@@ -69,13 +69,17 @@ def combine_data(normal_data: np.ndarray, edge_data: np.ndarray, threshold: floa
     
     # c = len(edge_from_normal_data) + len(edge_data) - p_edge * len(edge_from_normal_data) - p_edge * len(edge_data) / (p_edge * len(normal_data_only))
     
-    repeat_factor = np.floor((len(edge_from_normal_data) + len(edge_data)) / (p_edge * len(normal_data_only)))
-    remainder = int((len(normal_data) + len(edge_data) / p_edge) % len(normal_data_only))
+    # repeat_factor = np.floor((len(edge_from_normal_data) + len(edge_data)) / (p_edge * len(normal_data_only)))
+    # remainder = int((len(normal_data) + len(edge_data) / p_edge) % len(normal_data_only))
+    repeat_factor = ((1-p_edge) * (len(edge_from_normal_data) + len(edge_data)) / (p_edge * len(normal_data_only)))
+    N = np.floor(repeat_factor)
+    M = round((repeat_factor % 1) * len(normal_data_only))
 
 
     # Create combined data tensor
-    combined_data = np.repeat(normal_data_only, repeat_factor, axis=0)
-    combined_data = np.concatenate((combined_data, normal_data_only[:remainder], edge_data, edge_from_normal_data))
+    combined_data = np.repeat(normal_data_only, N, axis=0)
+    combined_data = combined_data + np.random.normal(0, 0.4, size=combined_data.shape)
+    combined_data = np.concatenate((combined_data, normal_data_only[:M], edge_data, edge_from_normal_data))
     return combined_data
 
 
@@ -106,6 +110,9 @@ def annotate_data(data: np.ndarray, bins: np.ndarray, targets: np.ndarray = None
 def get_evaluation_interval(distribution, random_state: int, n: int):
     """Gets the interval on which most of the data is distributed.
     """
-    print(distribution)
-    r = distribution.rvs(1_000_000, random_state=random_state)
-    return np.linspace(np.floor(np.min(r)), np.ceil(np.max(r)), n)
+    # print(distribution)
+    # r = distribution.rvs(1_000_000, random_state=random_state)
+    # return np.linspace(np.floor(np.min(r)), np.ceil(np.max(r)), n)
+    min_x = distribution.ppf(0.0005)
+    max_x = distribution.ppf(0.9995)
+    return np.linspace(min_x, max_x, n)

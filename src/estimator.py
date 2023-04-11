@@ -21,7 +21,7 @@ from nn_approach.model import FeedForward
 
 from typing import List, Tuple
 from tqdm import tqdm
-
+import matplotlib.pyplot as plt
 from pytorch_lightning.callbacks import ModelCheckpoint
 import pytorch_lightning as pl
 from config import Config as cfg
@@ -70,16 +70,19 @@ def combined_data_pipline(baseline_estimator: Estimator, combined_estimator: Est
 
                 for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_edge} p_edge={p_edge}'):
                     # Generate data
-                    normal_data, edge_data, threshold = data_utils.generate_data(distribution, num_normal, num_edge, threshold, random_state=run)
+                    normal_data, edge_data = data_utils.generate_data(distribution, num_normal, num_edge, threshold, random_state=run)
 
                     # Filter edge and normal data
                     p_edge_estimate = data_utils.compute_p_edge(normal_data, threshold)
                     combined_data = data_utils.combine_data(normal_data, edge_data, threshold, p_edge_estimate)
                     
                     # Fit data to estimators
-                    baseline_estimator.fit(normal_data[:, 0], **kwargs)
-                    combined_estimator.fit(combined_data[:, 0], **kwargs)
-
+                    # plt.figure()
+                    baseline_estimator.fit(normal_data[:, 0], x_values=x_values, distribution_str=distribution_str, **kwargs)
+                    combined_estimator.fit(combined_data[:, 0], x_values=x_values, distribution_str=distribution_str, **kwargs)
+                    # plt.plot(x_values, cfg.single_distributions_x1['bivariate_guassian_b'].cdf(x_values), label='true', linestyle='dotted')
+                    # plt.show()
+                    
                     # Obtain estimates
                     baseline_estimates[f'run_{run}'] = baseline_estimator.estimate(x_values)
                     improved_estimates[f'run_{run}'] = combined_estimator.estimate(x_values)
@@ -164,24 +167,38 @@ class NN_Estimator(Estimator):
         self.model = FeedForward(
             1, 1, cfg.nn_num_hidden_nodes, cfg.nn_num_hidden_layers)
         
-    def _construct_dataloader(self, data):
+    def _construct_train_loader(self, data):
         # Label training data
-        _, bins = np.histogram(data, len(data))
+        _, bins = np.histogram(data, 10 * len(data))
         samples, _ = data_utils.annotate_data(data, bins)
         samples = list(set(samples))
+        
+        
+        # samples.sort(key= lambda x: x[0])
+        # x,y = list(zip(*samples))
+        # plt.plot(x, y)
+        
         
         # construct dataloaders
         loader = DataLoader(samples, shuffle=True, batch_size=cfg.nn_batch_size, drop_last=True)
         return loader
     
-    def fit(self, data, pattern, device):
-        loader = self._construct_dataloader(data)
+    def _construct_validation_loader(self, distribution_str: str, x_values):
+        targets = cfg.single_distributions_x1[distribution_str].cdf(x_values)
+        samples = list(zip(x_values, targets))
+        loader = DataLoader(samples, shuffle=False, batch_size=len(x_values))
+        return loader
+        
+    
+    def fit(self, data, distribution_str: str, x_values, pattern, device):
+        train_loader = self._construct_train_loader(data)
+        val_loader = self._construct_validation_loader(distribution_str, x_values)
         
         # Initialize checkpointer
         ModelCheckpoint.CHECKPOINT_NAME_LAST = pattern + ".last"
         checkpointer = ModelCheckpoint(
             save_top_k=1,
-            every_n_train_steps=500,
+            every_n_train_steps=100,
             monitor="val_mse",
             filename=pattern + ".best",
             save_last=True,
@@ -192,10 +209,11 @@ class NN_Estimator(Estimator):
         trainer = pl.Trainer(max_steps=cfg.nn_training_steps,
                              inference_mode=False,
                              callbacks=[checkpointer],
-                             logger=False,
+                            #  logger=False,
+                            log_every_n_steps=500,
                              accelerator=device)
 
-        trainer.fit(self.model, loader, loader)
+        trainer.fit(self.model, train_loader, val_loader)
 
         return self.model
 

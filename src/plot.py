@@ -9,13 +9,16 @@ from config import Config as cfg
 from utils import variables_from_filename
 from evaluate import evaluation_pipeline
 
-import tikzplotlib
+
+import data_utils
 
 import matplotlib
-matplotlib.use('pgf')
+# matplotlib.use('pgf')
 matplotlib.rcParams["text.usetex"] = True
 matplotlib.rcParams["font.family"] = "serif"
 matplotlib.rcParams["font.size"] = "10"
+
+FIGSIZE = (3.5, 2.8)
 
 def tikzplotlib_fix_ncols(obj):
     """
@@ -55,7 +58,7 @@ def exp0(path: Path):
     axs.set_xlabel('$x$')
     axs.set_ylabel('improved std / baseline std')
     plt.tight_layout()
-    plt.savefig('kde_std.pgf')
+    plt.savefig('img/kde_std.pgf')
 
     fig, axs = plt.subplots(1, 1, figsize=(3.5,2.8))
     mse = results[3] / results[0]
@@ -71,71 +74,72 @@ def exp0(path: Path):
     axs.set_ylabel('improved mse / baseline mse')
     axs.legend()
     plt.tight_layout()
-    plt.savefig('kde_mse.pgf')
+    plt.savefig('img/kde_mse.pgf')
 
 #######################################################################
-def _plot(axs, df, label):
-    axs[0].plot(df["x"], df["improved_std"] / df["baseline_std"], label=label)
-    axs[0].legend()
-    axs[1].plot(df["x"], df["improved_mse"] / df["baseline_mse"], label=label)
-    axs[1].legend()
-
+def _plot(axs, df, label, tp: str):
+    axs.plot(df["x"], df[f"improved_{tp}"] / df[f"baseline_{tp}"], label=label)
+    axs.legend()
 
 def exp1(distribution_roots):
     labels = {
-        "bivariate_guassian_a": f'rho = 0.1',
-        "bivariate_guassian_b": f'rho = 0.5',
-        "bivariate_gaussian_c": f'rho = 0.9',
+        "bivariate_guassian_a": f'$\\rho = 0.1$',
+        "bivariate_guassian_b": f'$\\rho = 0.5$',
+        "bivariate_gaussian_c": f'$\\rho = 0.9$',
     }
+    
+    for tp in ['std', 'mse']:
+        _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
+        for f in distribution_roots:
+            df = pd.read_csv(            
+                            f / "results/p_edge_0.08.n_normal_1000.n_edge_1000.results.csv"
+            )
+    
+            _plot(axs, df, labels[f.name], tp)
 
-    fig, axs = plt.subplots(1, 2, figsize=(4,2))
-
-    for f in distribution_roots:
-        df = pd.read_csv(            
-                         f / "results/p_edge_0.08.n_normal_1000.n_edge_1000.results.csv"
-        )
-        _plot(axs, df, labels[f.name])
-
-    plt.savefig('kde_exp1.pgf')
+        plt.savefig(f'img/naive_kde_correlation_{tp}.pgf')
 
 
 def exp2(root: Path):
-    fig, axs = plt.subplots(1, 2, figsize=(7,4))
     files = list(root.rglob("*p_edge_0.08.*.csv"))
+    for tp in ['std', 'mse']:
+        _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
+        
+        for f in files:
+            _, num_normal, num_edge = variables_from_filename(f.name)
+            if num_normal != num_edge:
+                continue
 
-    for f in root.rglob("*p_edge_0.08.*.csv"):
-        _, num_normal, num_edge = variables_from_filename(f.name)
-        if num_normal != num_edge:
-            continue
+            df = pd.read_csv(f)
+        
+            _plot(axs, df, '$N_\\textrm{norm}=N_\\textrm{event}=' + num_normal + '$', tp)
+            
+        plt.savefig(f'img/naive_kde_observations_{tp}.pgf')
 
-        df = pd.read_csv(f)
-        _plot(axs, df, f'{num_normal} observations')
-    tikzplotlib_fix_ncols(fig)
-    tikzplotlib.save('kde_exp2.tex')
 
 
 def exp3(root: Path):
-    fig, axs = plt.subplots(1, 2, figsize=(7,4))
-    files = list(root.rglob("*.n_normal_1000.n_edge_1000.results.csv"))
-
     # Sort the files based on p_edge
+    files = list(root.rglob("*.n_normal_1000.n_edge_1000.results.csv"))
     def f_sort(f: Path):
         p_edge, _, _ = variables_from_filename(f.name)
         return p_edge
 
     files.sort(key=f_sort)
+    for tp in ['std', 'mse']:
+        _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
+        for f in files:
+            p_edge, num_normal, num_edge = variables_from_filename(f.name)
+            if num_normal != num_edge:
+                continue
 
-    for f in files:
-        p_edge, num_normal, num_edge = variables_from_filename(f.name)
-        if num_normal != num_edge:
-            continue
-
-        df = pd.read_csv(f)
-        _plot(axs, df, f'p_edge={p_edge}')
+            df = pd.read_csv(f)
+            
+            _plot(axs, df, '$p_\\textrm{event}=' + p_edge + '$', tp)
+            
+        plt.savefig(f'img/naive_kde_pedge_{tp}.pgf')
         
-
-
-if __name__ == "__main__":
+def main():
     root = Path('estimates/kde_combined_estimator/bivariate_guassian_b')
     exp0(root)
 
@@ -153,6 +157,11 @@ if __name__ == "__main__":
 
     # Experiment 3: Change p_event
     exp3(root)
+        
+
+
+if __name__ == "__main__":    
+    main()
 
 
 # cmap = plt.get_cmap('viridis')

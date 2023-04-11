@@ -89,6 +89,7 @@ def evaluation_pipeline(path: Path):
         
         save_csv(results_path, pd.DataFrame({
             'x': baseline_df['x'],
+            'true': baseline_df['true'],
             'baseline_mse': baseline_mse,
             'baseline_mean': baseline_mean,
             'baseline_std': baseline_std,
@@ -104,7 +105,7 @@ def evaluation_pipeline(path: Path):
     
 
 if __name__ == "__main__":
-    for path in Path('estimates/kde_combined_estimator').glob('*'):
+    for path in Path('estimates/nn_approach').glob('*'):
         if not path.is_dir() or path.name.find('result') != -1:
             continue
 
