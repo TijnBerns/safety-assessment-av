@@ -1,4 +1,5 @@
-import sys, os
+import sys
+import os
 
 # getting the name of the directory
 # where the this file is present.
@@ -12,34 +13,25 @@ parent = os.path.dirname(current)
 # the sys.path.
 sys.path.append(parent)
 
-from abc import ABC
-import scipy
-import scipy.stats
-import scipy.integrate
-import numpy as np
-from nn_approach.model import FeedForward
-
-from typing import List, Tuple
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-from pytorch_lightning.callbacks import ModelCheckpoint
-import pytorch_lightning as pl
-from config import Config as cfg
-import torch
-from torch.utils.data import DataLoader
-import data_utils
-import json
-from itertools import product
-from pathlib import Path
-from utils import save_csv
 import pandas as pd
-from stats import KDE
+from utils import save_csv
+from itertools import product
+import data_utils
+from torch.utils.data import DataLoader
+import torch
+from config import Config as cfg
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
+from tqdm import tqdm
+from nn_approach.model import FeedForward
+import numpy as np
+import scipy.integrate
+import scipy.stats
+import scipy
+from abc import ABC
 
 
 class Estimator(ABC):
-    def __init__(self) -> None:
-        pass
-
     def fit(self, *args, **kwargs):
         pass
 
@@ -47,153 +39,41 @@ class Estimator(ABC):
         pass
 
 
-def combined_data_pipline(baseline_estimator: Estimator, combined_estimator: Estimator, root: Path, *args, **kwargs):
-    """Default estimation pipeline. Takes two estimators, then fits normal data one estimator and combined data on the other estimator.
-
-    Args:
-        baseline_estimator (Estimator): Estimator on which normal data is fitted (baseline)
-        combined_estimator (Estimator): Estimator on which combined data is fitted
-        root (Path): Root folder to which results will be saved.
-    """
-    for distribution_str, distribution in cfg.distributions.items():
-        x_values = data_utils.get_evaluation_interval(cfg.single_distributions_x1[distribution_str], cfg.seed, cfg.num_eval)
-        true = cfg.single_distributions_x1[distribution_str].pdf(x_values)
-
-        for p_edge in cfg.p_edge:
-            for num_normal in cfg.num_normal:
-                num_edge = num_normal
-                threshold = scipy.stats.norm.ppf(1- p_edge)
-
-                # Initialize dicts to store results
-                baseline_estimates = {"x": x_values, "true": true}
-                improved_estimates = {"x": x_values, "true": true}
-
-                for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_edge} p_edge={p_edge}'):
-                    # Generate data
-                    normal_data, edge_data = data_utils.generate_data(distribution, num_normal, num_edge, threshold, random_state=run)
-
-                    # Filter edge and normal data
-                    p_edge_estimate = data_utils.compute_p_edge(normal_data, threshold)
-                    combined_data = data_utils.combine_data(normal_data, edge_data, threshold, p_edge_estimate)
-                    
-                    # Fit data to estimators
-                    # plt.figure()
-                    baseline_estimator.fit(normal_data[:, 0], x_values=x_values, distribution_str=distribution_str, **kwargs)
-                    combined_estimator.fit(combined_data[:, 0], x_values=x_values, distribution_str=distribution_str, **kwargs)
-                    # plt.plot(x_values, cfg.single_distributions_x1['bivariate_guassian_b'].cdf(x_values), label='true', linestyle='dotted')
-                    # plt.show()
-                    
-                    # Obtain estimates
-                    baseline_estimates[f'run_{run}'] = baseline_estimator.estimate(x_values)
-                    improved_estimates[f'run_{run}'] = combined_estimator.estimate(x_values)
-
-                    # Store results
-                    parent = root / distribution_str / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}'
-                    save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.baseline.csv',
-                            df=pd.DataFrame(baseline_estimates))
-                    save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.improved.csv',
-                            df=pd.DataFrame(improved_estimates))
-
-                    
-def combined_estimator_pipeline(baseline_estimator: Estimator, normal_estimator: Estimator, edge_estimator: Estimator, root: Path, *args, **kwargs):
-    """Default estimation pipeline. Takes three estimators. Combines two esitmators using p_edge and p_normal, the other serves as a baseline.
-
-    Args:
-        baseline_estimator (Estimator): Estimator on which normal data is fitted (baseline)
-        normal_estimator (Estimator): Estimator on which filtered normal data is fitted
-        edge_estimator (Estimator): Estimator on which filtered edge data is fitted
-        root (Path): Root folder to which results will be saved.
-    """
-
-    for distribution_str, distribution in cfg.distributions.items():
-        x_values = data_utils.get_evaluation_interval(cfg.single_distributions_x1[distribution_str], cfg.seed, cfg.num_eval)
-        true = cfg.single_distributions_x1[distribution_str].pdf(x_values)
-
-        for p_edge, num_normal in product(cfg.p_edge, cfg.num_normal):
-            num_edge = num_normal
-            threshold = scipy.stats.norm.ppf(1- p_edge)
-
-            # Initialize dicts to store results
-            baseline_estimates = {"x": x_values, "true": true}
-            improved_estimates = {"x": x_values, "true": true}
-
-            for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_edge} p_edge={p_edge}'):
-                # Generate data
-                normal_data, edge_data = data_utils.generate_data(distribution, num_normal, num_edge, threshold, random_state=run)
-                normal_data_filtered, edge_data_filtered = data_utils.filter_data(normal_data, edge_data, threshold)
-
-                # Filter edge and normal data
-                p_edge_estimate = data_utils.compute_p_edge(normal_data, threshold)
-                p_normal_estimate = 1 - p_edge_estimate
-
-                # Fit data to estimators
-                baseline_estimator.fit(normal_data[:, 0], **kwargs)
-                normal_estimator.fit(normal_data_filtered[:, 0], **kwargs)
-                edge_estimator.fit(edge_data_filtered[:, 0], **kwargs)
-
-                # Obtain estimates
-                baseline_estimates[f'run_{run}'] = baseline_estimator.estimate(x_values)
-                improved_estimates[f'run_{run}'] = p_normal_estimate * normal_estimator.estimate(x_values) + p_edge_estimate * edge_estimator.estimate(x_values)              
-
-                # Store results
-                parent = root / distribution_str / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}'
-                save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.baseline.csv',
-                        df=pd.DataFrame(baseline_estimates))
-                save_csv(path=parent / f'p_edge_{p_edge}.n_normal_{num_normal}.n_edge_{num_edge}.improved.csv',
-                        df=pd.DataFrame(improved_estimates))
-
-
-    
-class KDE_Estimator(Estimator):
+class KDEEstimator(Estimator):
     def __init__(self) -> None:
         super().__init__()
         self.model: scipy.stats.gaussian_kde = None
-        
+
     def fit(self, data: np.ndarray):
         self.model = scipy.stats.gaussian_kde(data)
-        
+
     def estimate(self, x_values):
-        # res = np.empty_like(x_values)
-        # for i in range(len(x_values)):
-        #     res[i] = self.model(x_values[i])
-
         return self.model(x_values)
-        # return self.model.score_samples(x_values)
 
 
-class NN_Estimator(Estimator):
+class NNEstimator(Estimator):
     def __init__(self) -> None:
         super().__init__()
         self.model = FeedForward(
             1, 1, cfg.nn_num_hidden_nodes, cfg.nn_num_hidden_layers)
-        
+
     def _construct_train_loader(self, data):
-        # Label training data
-        _, bins = np.histogram(data, 10 * len(data))
-        samples, _ = data_utils.annotate_data(data, bins)
-        samples = list(set(samples))
-        
-        
-        # samples.sort(key= lambda x: x[0])
-        # x,y = list(zip(*samples))
-        # plt.plot(x, y)
-        
-        
-        # construct dataloaders
-        loader = DataLoader(samples, shuffle=True, batch_size=cfg.nn_batch_size, drop_last=True)
+        samples = data_utils.annotate_data(data)
+        loader = DataLoader(samples, shuffle=True,
+                            batch_size=cfg.nn_batch_size, drop_last=True)
         return loader
-    
-    def _construct_validation_loader(self, distribution_str: str, x_values):
-        targets = cfg.single_distributions_x1[distribution_str].cdf(x_values)
+
+    def _construct_validation_loader(self, single_distribution, x_values):
+        targets = single_distribution.cdf(x_values)
         samples = list(zip(x_values, targets))
         loader = DataLoader(samples, shuffle=False, batch_size=len(x_values))
         return loader
-        
-    
-    def fit(self, data, distribution_str: str, x_values, pattern, device):
+
+    def fit(self, data, single_distribution, x_values, pattern, device):
         train_loader = self._construct_train_loader(data)
-        val_loader = self._construct_validation_loader(distribution_str, x_values)
-        
+        val_loader = self._construct_validation_loader(
+            single_distribution, x_values)
+
         # Initialize checkpointer
         ModelCheckpoint.CHECKPOINT_NAME_LAST = pattern + ".last"
         checkpointer = ModelCheckpoint(
@@ -209,8 +89,8 @@ class NN_Estimator(Estimator):
         trainer = pl.Trainer(max_steps=cfg.nn_training_steps,
                              inference_mode=False,
                              callbacks=[checkpointer],
-                            #  logger=False,
-                            log_every_n_steps=500,
+                             #  logger=False,
+                             log_every_n_steps=500,
                              accelerator=device)
 
         trainer.fit(self.model, train_loader, val_loader)
@@ -221,35 +101,90 @@ class NN_Estimator(Estimator):
         return self.model.compute_pdf(torch.Tensor(x_values))
 
 
-# class KDE_Estimator_a(Estimator):
-#     def __init__(self) -> None:
-#         super().__init__()
-#         self.baseline_fit = None
-#         self.normal_fit = None
-#         self.edge_fit = None
+class DefaultPipeline(ABC):
+    def run_pipeline(self, estimator, root, *args, **kwargs):
+        parameters = list(product(
+            cfg.distributions,
+            cfg.p_event,
+            cfg.num_normal,
+            cfg.num_event,
+            cfg.correlation
+        ))
 
-#     def fit_baseline(self, data):
-#         self.baseline_fit = scipy.stats.gaussian_kde(data.T)
+        for distribution_str, p_event, num_normal, num_event, correlation in parameters:
+            single_distribution, mv_distribution = cfg.get_distributions(
+                distribution_str, correlation)
+            x_values = data_utils.get_evaluation_interval(
+                single_distribution, cfg.num_eval)
+            true = single_distribution.pdf(x_values)
+            threshold = scipy.stats.norm.ppf(1 - p_event)
 
-#     def fit_normal(self, data: np.array):
-#         self.normal_fit = scipy.stats.gaussian_kde(data.T)
+            # Initialize dicts to store results
+            baseline_estimates = {"x": x_values, "true": true}
+            improved_estimates = {"x": x_values, "true": true}
 
-#     def fit_edge(self, data: np.array):
-#         self.edge_fit = scipy.stats.gaussian_kde(data.T)
+            for run in tqdm(range(cfg.num_estimates), desc=f'{distribution_str}: norm={num_normal} edge={num_event} p_edge={p_event}'):
+                # Generate data
+                normal_data, edge_data = data_utils.generate_data(
+                    mv_distribution, num_normal, num_event, threshold, random_state=run)
 
-#     def baseline_estimate(self, x):
-#         # return scipy.integrate.quad(lambda y: self.baseline_fit([x, y]), -np.inf, np.inf)[0]
-#         return self.baseline_fit(x)
+                # Obtain estimates
+                baseline, improved = self.obtain_estimates(
+                    estimator, single_distribution, normal_data, edge_data, threshold, x_values, distribution_str, *args, **kwargs)
+                baseline_estimates[f'run_{run}'] = baseline
+                improved_estimates[f'run_{run}'] = improved
 
-#     def improved_estimate(self, x, c, p_normal, p_edge):
-#         # integral_till_c = scipy.integrate.quad(lambda y: self.normal_fit([x, y]) + self.normal_fit([x, 2 * c - y] if y < c else 0), -np.inf, c)[0]
-#         # integral_from_c = scipy.integrate.quad(lambda y: self.edge_fit([x, y]) + self.edge_fit([x, 2 * c - y] if y >= c else 0), c, np.inf)[0]
-#         # return p_normal * integral_till_c + p_edge * integral_from_c
-#         return p_normal * self.normal_fit(x) + p_edge * self.edge_fit(x)
+                # Store results
+                parent = root / distribution_str / \
+                    f'p_edge_{p_event}.n_normal_{num_normal}.n_edge_{num_event}'
+                save_csv(path=parent / f'p_edge_{p_event}.n_normal_{num_normal}.n_edge_{num_event}.baseline.csv',
+                         df=pd.DataFrame(baseline_estimates))
+                save_csv(path=parent / f'p_edge_{p_event}.n_normal_{num_normal}.n_edge_{num_event}.improved.csv',
+                         df=pd.DataFrame(improved_estimates))
 
-#     def estimate(self, x_values, estimate_fn, *args, **kwargs):
-#         estimate = np.empty_like(x_values)
+        def obtain_estimates(self, *args, **kwargs):
+            raise NotImplementedError
 
-#         for i in range(len(x_values)):
-#             estimate[i] = estimate_fn(x_values[i], **kwargs)
-#         return estimate
+
+class CombinedDataPipeline(DefaultPipeline):
+    def obtain_estimates(estimator: Estimator, single_distribution, normal_data, edge_data, threshold, x_values, distribution_str, *args, **kwargs):
+        # Construct estimators
+        baseline_estimator = estimator.__class__()
+        combined_estimator = estimator.__class__()
+
+        # Filter edge and normal data
+        p_edge_estimate = data_utils.compute_p_edge(normal_data, threshold)
+        combined_data = data_utils.combine_data(
+            normal_data, edge_data, threshold, p_edge_estimate)
+
+        # Fit data to estimators
+        baseline_estimator.fit(
+            normal_data[:, 0], x_values=x_values, single_distribution=single_distribution, **kwargs)
+        combined_estimator.fit(
+            combined_data[:, 0], x_values=x_values, single_distribution=single_distribution, **kwargs)
+
+        # Obtain estimates
+        return baseline_estimator.estimate(x_values), combined_estimator.estimate(x_values)
+
+
+class NaiveEnsemblePipeline(DefaultPipeline):
+    def obtain_estimates(self, estimator: Estimator, single_distribution, normal_data, edge_data, threshold, x_values, *args, **kwargs):
+        normal_data_filtered, edge_data_filtered = data_utils.filter_data(
+            normal_data, edge_data, threshold)
+
+        # Construct estimators
+        baseline_estimator = estimator.__class__()
+        normal_estimator = estimator.__class__()
+        edge_estimator = estimator.__class__()
+
+        # Filter edge and normal data
+        p_edge_estimate = data_utils.compute_p_edge(normal_data, threshold)
+        p_normal_estimate = 1 - p_edge_estimate
+
+        # Fit data to estimators
+        baseline_estimator.fit(normal_data[:, 0], **kwargs)
+        normal_estimator.fit(normal_data_filtered[:, 0], **kwargs)
+        edge_estimator.fit(edge_data_filtered[:, 0], **kwargs)
+
+        # Obtain estimates
+        return baseline_estimator.estimate(x_values), p_normal_estimate * normal_estimator.estimate(x_values) + p_edge_estimate * edge_estimator.estimate(x_values)

@@ -13,12 +13,11 @@ from evaluate import evaluation_pipeline
 import data_utils
 
 import matplotlib
-# matplotlib.use('pgf')
 matplotlib.rcParams["text.usetex"] = True
 matplotlib.rcParams["font.family"] = "serif"
-matplotlib.rcParams["font.size"] = "10"
+matplotlib.rcParams["font.size"] = "8"
 
-FIGSIZE = (3.5, 2.8)
+FIGSIZE = (3.3, 2.0)
 
 def tikzplotlib_fix_ncols(obj):
     """
@@ -29,8 +28,8 @@ def tikzplotlib_fix_ncols(obj):
     for child in obj.get_children():
         tikzplotlib_fix_ncols(child)
 
-def exp0(path: Path):
-    files = list(path.rglob("*results.csv"))
+def exp0(path: Path, results_files="*results.csv"):
+    files = list(path.rglob(results_files))
     results = np.zeros((6, len(files), cfg.num_eval))
 
     for i, f in enumerate(files):
@@ -44,7 +43,7 @@ def exp0(path: Path):
         results[5][i] = df["improved_std"]
 
     # Plot std improved / std baseline
-    fig, axs = plt.subplots(1, 1, figsize=(3.5,2.8))
+    fig, axs = plt.subplots(1, 1, figsize=FIGSIZE)
     std = results[5] / results[2]
     axs.plot(x_values, std.mean(axis=0), label='mean')
     axs.fill_between(
@@ -58,9 +57,9 @@ def exp0(path: Path):
     axs.set_xlabel('$x$')
     axs.set_ylabel('improved std / baseline std')
     plt.tight_layout()
-    plt.savefig('img/kde_std.pgf')
+    plt.savefig(f'img/kde_std_{path.name}.pgf')
 
-    fig, axs = plt.subplots(1, 1, figsize=(3.5,2.8))
+    fig, axs = plt.subplots(1, 1, figsize=FIGSIZE)
     mse = results[3] / results[0]
     axs.plot(x_values, mse.mean(axis=0), label='mean')
     axs.fill_between(
@@ -74,11 +73,11 @@ def exp0(path: Path):
     axs.set_ylabel('improved mse / baseline mse')
     axs.legend()
     plt.tight_layout()
-    plt.savefig('img/kde_mse.pgf')
+    plt.savefig(f'img/kde_mse_{path.name}.pgf')
 
 #######################################################################
 def _plot(axs, df, label, tp: str):
-    axs.plot(df["x"], df[f"improved_{tp}"] / df[f"baseline_{tp}"], label=label)
+    axs.plot(df["x"], df[f"improved_{tp}".lower()] / df[f"baseline_{tp}".lower()], label=label)
     axs.legend()
 
 def exp1(distribution_roots):
@@ -88,23 +87,26 @@ def exp1(distribution_roots):
         "bivariate_gaussian_c": f'$\\rho = 0.9$',
     }
     
-    for tp in ['std', 'mse']:
+    for tp in ['STD', 'MSE']:
         _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
+        axs.set_xlabel('$x$')
+        axs.set_ylabel(f'improved {tp} / baseline {tp}')
         for f in distribution_roots:
             df = pd.read_csv(            
                             f / "results/p_edge_0.08.n_normal_1000.n_edge_1000.results.csv"
             )
     
             _plot(axs, df, labels[f.name], tp)
-
-        plt.savefig(f'img/naive_kde_correlation_{tp}.pgf')
+        plt.tight_layout()
+        plt.savefig(f'img/naive_kde_correlation_{tp}.pgf'.lower())
 
 
 def exp2(root: Path):
     files = list(root.rglob("*p_edge_0.08.*.csv"))
-    for tp in ['std', 'mse']:
+    for tp in ['STD', 'MSE']:
         _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
-        
+        axs.set_xlabel('$x$')
+        axs.set_ylabel(f'improved {tp} / baseline {tp}')
         for f in files:
             _, num_normal, num_edge = variables_from_filename(f.name)
             if num_normal != num_edge:
@@ -113,8 +115,8 @@ def exp2(root: Path):
             df = pd.read_csv(f)
         
             _plot(axs, df, '$N_\\textrm{norm}=N_\\textrm{event}=' + num_normal + '$', tp)
-            
-        plt.savefig(f'img/naive_kde_observations_{tp}.pgf')
+        plt.tight_layout()
+        plt.savefig(f'img/naive_kde_observations_{tp}.pgf'.lower())
 
 
 
@@ -126,8 +128,10 @@ def exp3(root: Path):
         return p_edge
 
     files.sort(key=f_sort)
-    for tp in ['std', 'mse']:
+    for tp in ['STD', 'MSE']:
         _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
+        axs.set_xlabel('$x$')
+        axs.set_ylabel(f'improved {tp} / baseline {tp}')
         for f in files:
             p_edge, num_normal, num_edge = variables_from_filename(f.name)
             if num_normal != num_edge:
@@ -136,8 +140,54 @@ def exp3(root: Path):
             df = pd.read_csv(f)
             
             _plot(axs, df, '$p_\\textrm{event}=' + p_edge + '$', tp)
-            
-        plt.savefig(f'img/naive_kde_pedge_{tp}.pgf')
+        plt.tight_layout()
+        plt.savefig(f'img/naive_kde_pedge_{tp}.pgf'.lower())
+        
+        
+def exp4(path: Path):
+    df = pd.read_csv(path)
+    fig, axs = plt.subplots(1, 1, figsize=FIGSIZE)
+    axs.plot(df['x'], df['improved_mse'] / df['baseline_mse'], label='improved MSE / baseline MSE')
+    axs.plot(df['x'], df['improved_std'] / df['baseline_std'], label='improved STD / baseline STD')
+    axs.legend()
+    axs.set_xlabel('$x$')
+    plt.tight_layout()
+    plt.savefig(f'img/naive_kde_{path.parts[-3]}.pgf')
+    
+    
+    _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
+    axs.plot(df['x'], df['true'], label='true', linestyle='dotted')
+    axs.plot(df['x'], df['baseline_mean'], label='baseline', alpha=0.5)
+    axs.plot(df['x'], df['improved_mean'], label='improved', alpha=0.5)
+    
+    max_y = max(max(df['true']), max(df['baseline_mean']), max(df['improved_mean']))
+    min_y = min(min(df['true']), min(df['baseline_mean']), min(df['improved_mean'])) - 0.05
+    axs.set_xlabel('$x$')
+    axs.set_ylabel(f'$f(x)$')
+    if max_y > 1:
+        axs.set_ylim(bottom = min_y, top=2)
+    axs.legend()
+    plt.tight_layout()
+    plt.savefig(f'img/naive_kde_pred_{path.parts[-3]}.pgf')
+        
+    
+    
+    # axs.plot(x_values, std.mean(axis=0), label='mean')
+    # axs.fill_between(
+    #     x_values,
+    #     np.percentile(std, 2.5, axis=0),
+    #     np.percentile(std, 97.5, axis=0),
+    #     alpha=0.25,
+    #     label = '95\% confidence interval'
+    # )
+    # axs.legend()
+    # axs.set_xlabel('$x$')
+    # axs.set_ylabel('improved std / baseline std')
+    # plt.tight_layout()
+    # plt.savefig(f'img/kde_std_{path.name}.pgf')
+
+        
+    
         
 def main():
     root = Path('estimates/kde_combined_estimator/bivariate_guassian_b')
@@ -157,8 +207,14 @@ def main():
 
     # Experiment 3: Change p_event
     exp3(root)
-        
-
+    
+    # Experiment 4: Beta and gumbell distribution
+    # results_files = '*p_edge_0.04.n_normal_1000.n_edge_1000.results.csv'
+    # results_files = '*results.csv'
+    # exp0(Path('estimates/kde_combined_estimator/beta_a'), results_files)
+    # exp0(Path('estimates/kde_combined_estimator/gumbel_a'), results_files) 
+    exp4(Path('estimates/kde_combined_estimator/beta_a/results/p_edge_0.04.n_normal_1000.n_edge_1000.results.csv'))
+    exp4(Path('estimates/kde_combined_estimator/gumbel_a/results/p_edge_0.04.n_normal_1000.n_edge_1000.results.csv'))
 
 if __name__ == "__main__":    
     main()

@@ -14,16 +14,18 @@ parent = os.path.dirname(current)
 sys.path.append(parent)
 
 from config import Config as cfg
-from estimator import KDE_Estimator, combined_data_pipline, combined_estimator_pipeline
+from estimator import KDEEstimator, NaiveEnsemblePipeline, CombinedDataPipeline
+import click
 
-
+@click.command()
+@click.option('--type', '-t', default='asd', type=str)
 def main(type: str = 'asd'):
     if type == 'combined':
         root = cfg.path_estimates / 'kde_combined_data'
-        combined_data_pipline(KDE_Estimator(), KDE_Estimator(), root)
+        CombinedDataPipeline().run_pipeline(KDEEstimator(), root)
     else: 
         root = cfg.path_estimates / 'kde_combined_estimator'
-        combined_estimator_pipeline(KDE_Estimator(), KDE_Estimator(), KDE_Estimator(), root)
+        NaiveEnsemblePipeline().run_pipeline(KDEEstimator(), root)
     
 if __name__ == "__main__":
     main()
