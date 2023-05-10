@@ -13,8 +13,8 @@ parent = os.path.dirname(current)
 # the sys.path.
 sys.path.append(parent)
 
-from config import Config as cfg
-import data_utils
+from config import UVParameters as uv_params
+import data.data_utils as data_utils
 from itertools import product
 import scipy.stats
 import numpy as np
@@ -41,16 +41,16 @@ def main():
     correlation = list(np.arange(0.1, 1, 0.1))
     
     parameter_sets = list(product(
-        cfg.distributions, 
-        cfg.num_normal, 
-        cfg.num_event, 
-        cfg.p_event,
+        uv_params.distributions, 
+        uv_params.num_normal, 
+        uv_params.num_event, 
+        uv_params.p_event,
         correlation))
     results = []
 
     print(f'Total number of sets: {len(parameter_sets)}')
     for i, (distribution_str, num_normal, num_event, p_event, correlation) in tqdm(enumerate(parameter_sets)):
-        s_distribution, mv_distribution = cfg.get_distributions(distribution_str, correlation)
+        s_distribution, mv_distribution = uv_params.get_distributions(distribution_str, correlation)
         x_values = data_utils.get_evaluation_interval(s_distribution)
         threshold = data_utils.determine_threshold(frac_edge=p_event)
         

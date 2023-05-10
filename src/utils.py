@@ -1,11 +1,11 @@
 import os
-from typing import Tuple
+from typing import Tuple, Any
 import torch
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 from collections import defaultdict
-
+import json
 
 def set_device() -> Tuple[str, str]:
     """Checks whether CUDA and SLURM are both avaible
@@ -35,7 +35,25 @@ def save_csv(path: Path, df: pd.DataFrame):
         parent.mkdir(parents=True)
 
     df.to_csv(path, index=False, lineterminator='\n', sep=',')
+    
+def save_json(path: Path, data: Any):
+    parent = path.parent
+    if not parent.exists():
+        parent.mkdir(parents=True)
 
+    with open(path, 'w') as f:
+        json.dump(data, f)
+        
+def load_json(path: Path):
+    with open(path, 'r') as f:
+        data = json.load(f)
+    return data  
+        
+def load_json_as_df(path: Path):
+    with open(path,'r') as f:
+        data = json.load(f)
+        
+    return pd.DataFrame(data) 
 
 def rec_dd():
     """Recursive defaultdict
@@ -56,10 +74,11 @@ def variables_from_filename(f: str):
         _type_: p_edge, n_normal, and n_edge
     """
     f_split = f.split('.')
-    p_edge = f_split[0][7:] + '.' + f_split[1]
-    n_normal = f_split[2][9:]
-    n_edge = f_split[3][7:]
-    return p_edge, n_normal, n_edge
+    p_edge = float(f_split[0][7:] + '.' + f_split[1])
+    n_normal = int(f_split[2][9:])
+    n_edge = int(f_split[3][7:])
+    corr = float(f_split[4][5:] + '.' + f_split[5])
+    return p_edge, n_normal, n_edge, corr
 
     
 

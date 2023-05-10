@@ -39,6 +39,9 @@ class Gaussian_Copula(Distribution):
             rand_Nmar[:,i] = distribution.ppf(rand_Unorm[:,i])
             
         return rand_Nmar
+    
+    def ppf(self, x: List[float]):
+        pass
         
     
 class Mixture(Distribution):
@@ -61,8 +64,7 @@ class Mixture(Distribution):
         np.random.shuffle(res)
         res = res[:n]
         assert len(res) == n                    
-        return res 
-            
+        return res             
         
     
     def pdf(self, x: Union[np.ndarray, float]) -> np.ndarray:
@@ -88,7 +90,6 @@ class Mixture(Distribution):
             
         return res
         
-    
     
 # class UnivariateThreshold(Distribution):
 #     def __init__(self, distribution, threshold_distribution) -> None:

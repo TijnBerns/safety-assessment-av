@@ -4,7 +4,6 @@ related_work/
 notebooks/
 estimates*
 estimates/
-data/
 checkpoints/
 logs/
 temp.py

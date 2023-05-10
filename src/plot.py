@@ -4,13 +4,13 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 import numpy as np
-from evaluate import evaluate
-from config import Config as cfg
+from evaluate import evaluate_pdf
+from config import UVParameters as uv_params
 from utils import variables_from_filename
-from evaluate import evaluation_pipeline
+from evaluate import uv_evaluation_pipeline
 
 
-import data_utils
+import data.data_utils as data_utils
 
 import matplotlib
 matplotlib.rcParams["text.usetex"] = True
@@ -30,7 +30,7 @@ def tikzplotlib_fix_ncols(obj):
 
 def exp0(path: Path, results_files="*results.csv"):
     files = list(path.rglob(results_files))
-    results = np.zeros((6, len(files), cfg.num_eval))
+    results = np.zeros((6, len(files), uv_params.num_eval))
 
     for i, f in enumerate(files):
         df = pd.read_csv(f)
