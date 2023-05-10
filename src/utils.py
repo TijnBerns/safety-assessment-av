@@ -7,6 +7,31 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import json
 
+
+"""Functions that check types."""
+def is_bool(x):
+    return isinstance(x, bool)
+
+
+def is_int(x):
+    return isinstance(x, int)
+
+
+def is_positive_int(x):
+    return is_int(x) and x > 0
+
+
+def is_nonnegative_int(x):
+    return is_int(x) and x >= 0
+
+
+def is_power_of_two(n):
+    if is_positive_int(n):
+        return not n & (n - 1)
+    else:
+        return False
+
+
 def set_device() -> Tuple[str, str]:
     """Checks whether CUDA and SLURM are both avaible
 
@@ -80,5 +105,22 @@ def variables_from_filename(f: str):
     corr = float(f_split[4][5:] + '.' + f_split[5])
     return p_edge, n_normal, n_edge, corr
 
-    
+def create_alternating_binary_mask(features, even=True):
+    """
+    Creates a binary mask of a given dimension which alternates its masking.
 
+    :param features: Dimension of mask.
+    :param even: If True, even values are assigned 1s, odd 0s. If False, vice versa.
+    :return: Alternating binary mask of type torch.Tensor.
+    """
+    mask = torch.zeros(features).byte()
+    start = 0 if even else 1
+    mask[start::2] += 1
+    return mask
+
+def sum_except_batch(x, num_batch_dims=1):
+    """Sums all elements of `x` except for the first `num_batch_dims` dimensions."""
+    if not is_nonnegative_int(num_batch_dims):
+        raise TypeError('Number of batch dimensions must be a non-negative integer.')
+    reduce_dims = list(range(num_batch_dims, x.ndimension()))
+    return torch.sum(x, dim=reduce_dims)

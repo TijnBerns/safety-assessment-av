@@ -20,7 +20,7 @@ import scipy.stats
 import scipy.integrate
 from scipy.optimize import fsolve
 import numpy as np
-from nn_approach.model import FeedForward
+from experiments.ffn.model import FeedForward
 from tqdm import tqdm
 from pytorch_lightning.callbacks import ModelCheckpoint
 import pytorch_lightning as pl
@@ -54,10 +54,6 @@ class Estimator(ABC):
     def estimate_pdf(self, *args, **kwargs):
         return
     
-    # @abstractmethod
-    # def uv_epsilon_support(self, *args, **kwargs):
-    #     return
-
 
 class KDEEstimator(Estimator):
     def __init__(self) -> None:
@@ -69,16 +65,17 @@ class KDEEstimator(Estimator):
 
     def estimate_pdf(self, x_values):
         return self.model(x_values.T)
-    
-    # def uv_epsilon_support(self, epsilon: float, x_values):        
-    #     return data_utils.get_epsilon_support_uv(self.model, epsilon, x_values)
 
 
 class NNEstimator(Estimator):
-    def __init__(self) -> None:
+    def __init__(self, num_hidden, num_layers, num_in, num_out, device) -> None:
         super().__init__()
-        self.model = FeedForward(
-            1, 1, uv_params.nn_num_hidden_nodes, uv_params.nn_num_hidden_layers)
+        self.num_hidden = num_hidden
+        self.num_layers = num_layers
+        self.num_in = num_in
+        self.num_out = num_out
+        self.device = device
+        self.model = FeedForward(num_in, num_out, num_hidden, num_layers)
 
     def _construct_train_loader(self, data):
         samples = data_utils.annotate_data(data)
@@ -92,12 +89,13 @@ class NNEstimator(Estimator):
         loader = DataLoader(samples, shuffle=False, batch_size=len(x_values))
         return loader
 
-    def fit(self, data, single_distribution, x_values, pattern, device):
+    def fit(self, data, single_distribution, x_values):
         train_loader = self._construct_train_loader(data)
         val_loader = self._construct_validation_loader(
             single_distribution, x_values)
 
         # Initialize checkpointer
+        pattern = f"layers_{self.num_hidden}.neurons_{self.num_hidden}.epoch_{{epoch:04d}}.step_{{step:09d}}.val-mse_{{val_mse:.4f}}"
         ModelCheckpoint.CHECKPOINT_NAME_LAST = pattern + ".last"
         checkpointer = ModelCheckpoint(
             save_top_k=1,
@@ -114,7 +112,7 @@ class NNEstimator(Estimator):
                              callbacks=[checkpointer],
                              #  logger=False,
                              log_every_n_steps=500,
-                             accelerator=device)
+                             accelerator=self.device)
 
         trainer.fit(self.model, train_loader, val_loader)
 
@@ -130,7 +128,7 @@ class NNEstimator(Estimator):
 # Wrapper classes for the full estimation pipeline
 
 class EstimatorType(ABC):
-    def obtain_estimates(estimator: Estimator, single_distribution, normal_data, edge_data, threshold, x_values, distribution_str, *args, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
+    def obtain_estimates(*args, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
         raise NotImplementedError
 
 
@@ -143,17 +141,22 @@ class CombinedData(EstimatorType):
 
         # Filter edge and normal data
         p_edge_estimate = data_utils.compute_p_edge(normal_data, threshold)
-        combined_data = data_utils.combine_data(
-            normal_data, edge_data, threshold, p_edge_estimate)
+        combined_data = data_utils.combine_data(normal_data, edge_data, threshold, p_edge_estimate)
 
         # Fit data to estimators
-        baseline_estimator.fit(
-            normal_data[:, 0], x_values=x_values, single_distribution=single_distribution, **kwargs)
-        combined_estimator.fit(
-            combined_data[:, 0], x_values=x_values, single_distribution=single_distribution, **kwargs)
+        baseline_estimator.fit(normal_data[:, :-1], **kwargs)
+        combined_estimator.fit(combined_data[:, :-1],  **kwargs)
+        
+        # Obtain estimates of pdf
+        baseline_pdf = baseline_estimator.estimate_pdf(x_values)
+        improved_pdf = combined_estimator.estimate_pdf(x_values)
+        
+        # Obtain estimates of epsilon support
+        baseline_eps = data_utils.get_epsilon_support_uv(baseline_estimator.estimate_pdf, uv_params.epsilon, x_values)
+        improved_eps = data_utils.get_epsilon_support_uv(combined_estimator.estimate_pdf, uv_params.epsilon, x_values)
 
         # Obtain estimates
-        return baseline_estimator.estimate_pdf(x_values), combined_estimator.estimate_pdf(x_values)
+        return baseline_pdf, improved_pdf, baseline_eps, improved_eps
 
 
 class NaiveEnsemble(EstimatorType):

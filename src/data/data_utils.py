@@ -65,11 +65,6 @@ def combine_data(normal_data: np.ndarray, edge_data: np.ndarray, threshold: floa
     N = np.floor(repeat_factor)
     M = round((repeat_factor % 1) * len(normal_data_only))
 
-    # # Create combined data tensor
-    # kde = scipy.stats.gaussian_kde(normal_data_only.T)
-    # combined_data = kde.resample(int(((N-1) * len(normal_data_only)) + M)).T
-    # combined_data = np.concatenate((normal_data_only, combined_data, edge_data, edge_from_normal_data))
-
     combined_data = np.repeat(normal_data_only, N, axis=0)
     combined_data = np.concatenate((combined_data, normal_data_only[:M], edge_data, edge_from_normal_data))
     return combined_data    
