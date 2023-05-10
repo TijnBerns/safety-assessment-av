@@ -1,10 +1,10 @@
 img/
-lightning_logs/
 related_work/
 notebooks/
 estimates*
 estimates/
-checkpoints/
+checkpoints
+lightning_logs
 logs/
 temp.py
 # Byte-compiled / optimized / DLL files

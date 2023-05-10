@@ -3,6 +3,7 @@ matplotlib
 pandas
 scikit-learn
 tqdm
-
+click
+torch
 torchmetrics
 pytorch-lightning

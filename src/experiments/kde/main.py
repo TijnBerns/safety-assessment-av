@@ -6,10 +6,9 @@ import estimator
 import click
 
 @click.command()
-@click.option('--type', '-t', default='asd', type=str)
-@click.option('--root', default=uv_params.path_estimates)
+@click.option('--type', '-t', default='naive_ensemble', type=str)
 def main(type: str = 'asd'):
-    root = root / type
+    root = uv_params.path_estimates / type
     if type == 'combined_data':
         estimator.UnivariatePipeline(estimator.CombinedData).run_pipeline(estimator.KDEEstimator(), root)
     elif type == 'naive_ensemble': 

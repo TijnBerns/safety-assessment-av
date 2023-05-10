@@ -11,5 +11,5 @@
 project_dir=.
 
 # Train on train-full with no speaker change symbols or ids
-source "$project_dir"/venv/bin/activate
-python "$project_dir"/src/kde_approach/main.py
+source "$project_dir/venv/bin/activate"
+python "$project_dir/src/experiments/kde/main.py" --type=combined_data 

@@ -19,17 +19,15 @@ VENV_DIR=/scratch/$USER/virtual_environments/statml
 
 mkdir -p "$VENV_DIR"
 
+# create the virtual environment
+python3 -m venv "$VENV_DIR"
 
+# create a symlink to the 'venv' folder if we're on the cluster
+if [ ! -f "$PROJECT_DIR"/venv ]; then
+  ln -sfn "$VENV_DIR" "$PROJECT_DIR"/venv
+fi
 
-# # create the virtual environment
-# python3 -m venv "$VENV_DIR"
-
-# # create a symlink to the 'venv' folder if we're on the cluster
-# if [ ! -f "$PROJECT_DIR"/venv ]; then
-#   ln -sfn "$VENV_DIR" "$PROJECT_DIR"/venv
-# fi
-
-# # install the dependencies
-# source "$VENV_DIR"/bin/activate
-# python3 -m pip install --upgrade pip
-# python3 -m pip install -r "$PROJECT_DIR"/requirements.txt
+# install the dependencies
+source "$VENV_DIR"/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -r "$PROJECT_DIR"/requirements.txt
