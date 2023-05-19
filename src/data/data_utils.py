@@ -2,6 +2,8 @@ from typing import Tuple, List
 import numpy as np
 import scipy.stats
 from scipy.optimize import fsolve
+from itertools import product 
+
 
 def compute_p_edge(data, threshold, dim=-1):
     """Computes the fraction of edge data in the provided samples. 
@@ -10,7 +12,23 @@ def compute_p_edge(data, threshold, dim=-1):
     return len(data[data[:, dim] > threshold]) / len(data)
 
 def determine_threshold(frac_edge: float, distribution=scipy.stats.norm()):
+    assert frac_edge > 0 and frac_edge < 1
+    try:
+        return determine_threshold_analytical(frac_edge, distribution)
+    except:
+        print('PPF function not available, intersection with CDF solved numerically')
+        return determine_threshold_numerical(frac_edge, distribution)
+
+def determine_threshold_analytical(frac_edge: float, distribution=scipy.stats.norm()):
     return distribution.ppf(1 - frac_edge)
+
+def determine_threshold_numerical(frac_edge: float, distribution=scipy.stats.norm()):
+    xr = np.sort(distribution.rvs(int(10e3)))
+    x0 = np.percentile(xr, frac_edge * 100)
+    
+    def _f(x):
+        return distribution.cdf(x) - (1-frac_edge)
+    return fsolve(_f, x0)
 
 def generate_data(ditribution, num_norm, num_edge, threshold, dim:int=-1, random_state=0) -> Tuple[np.ndarray, np.ndarray]:
     """Generate normal and edge data from multivariate normal distribution
@@ -125,7 +143,7 @@ def annotate_data(data: np.ndarray) -> List[Tuple[float, float]]:
     return list(zip(data, y_values))
 
 
-def get_evaluation_interval(distribution , n: int=400):
+def get_evaluation_interval(distribution , n: int=400, reduce_dim=0):
     """Gets the interval on which most of the data is distributed.
     """
     if type(distribution) is not list:
@@ -136,11 +154,17 @@ def get_evaluation_interval(distribution , n: int=400):
         min_x = d.ppf(0.0005)
         max_x = d.ppf(0.9995)
         intervals.append(np.linspace(min_x, max_x, n))
-        
+    
+    # Univariate case: return single interval
     if len(intervals) == 1:
         return intervals[0]
     
-    return np.array(intervals)
+    # Multivariate case: return grid values
+    if reduce_dim == 0:
+        x_values = np.array(list(product(*intervals)))
+    else:
+        x_values = np.array(list(product(*intervals[:reduce_dim])))
+    return  x_values
 
 def get_epsilon_support_uv(fn, epsilon, x_values):
     # List of intervals
@@ -157,10 +181,10 @@ def get_epsilon_support_uv(fn, epsilon, x_values):
         out.append((x_values[i], x_values[j]))
     
     # Step 2: Refine estimates using fsolve
-    def g(x):
+    def _g(x):
         return fn(x) - epsilon
     
     for i in range(len(out)):
-        out[i] = list(fsolve(g, out[i]))
+        out[i] = list(fsolve(_g, out[i]))
     return out
     

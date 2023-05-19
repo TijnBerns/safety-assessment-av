@@ -96,7 +96,7 @@ def variables_from_filename(f: str):
         f (str): The file name structures as p_edge_X.n_normal_Y.n_edge_Z
 
     Returns:
-        _type_: p_edge, n_normal, and n_edge
+        Tuple[float]: p_edge, n_normal, n_edge, corr
     """
     f_split = f.split('.')
     p_edge = float(f_split[0][7:] + '.' + f_split[1])
@@ -124,3 +124,21 @@ def sum_except_batch(x, num_batch_dims=1):
         raise TypeError('Number of batch dimensions must be a non-negative integer.')
     reduce_dims = list(range(num_batch_dims, x.ndimension()))
     return torch.sum(x, dim=reduce_dims)
+
+def tile(x, n):
+    if not is_positive_int(n):
+        raise TypeError('Argument \'n\' must be a positive integer.')
+    x_ = x.reshape(-1)
+    x_ = x_.repeat(n)
+    x_ = x_.reshape(n, -1)
+    x_ = x_.transpose(1, 0)
+    x_ = x_.reshape(-1)
+    return x_
+
+
+def searchsorted(bin_locations, inputs, eps=1e-6):
+    bin_locations[..., -1] += eps
+    return torch.sum(
+        inputs[..., None] >= bin_locations,
+        dim=-1
+    ) - 1

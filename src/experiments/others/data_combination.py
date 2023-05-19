@@ -28,7 +28,7 @@ matplotlib.rcParams["text.usetex"] = True
 matplotlib.rcParams["font.family"] = "serif"
 matplotlib.rcParams["font.size"] = "8"
 
-labels = {
+LABELS = {
     'num_norm': '$N_\\textrm{norm}$',
     'num_event': '$N_\\textrm{event}$',
     'p_event': '$p_\\textrm{event}$',
@@ -52,7 +52,7 @@ def main():
     for i, (distribution_str, num_normal, num_event, p_event, correlation) in tqdm(enumerate(parameter_sets)):
         s_distribution, mv_distribution = uv_params.get_distributions(distribution_str, correlation)
         x_values = data_utils.get_evaluation_interval(s_distribution)
-        threshold = data_utils.determine_threshold(frac_edge=p_event)
+        threshold = data_utils.determine_threshold_analytical(frac_edge=p_event)
         
         n = 10
         sse_norm = 0
@@ -114,7 +114,7 @@ def plot(path, groupby:str):
     plt.fill_between(mean.keys(), lower.values, upper.values, alpha=0.25, label='95 confidence interval')
     # x_ticks = [x_ticks[0], np.median(x_ticks), x_ticks[-1]]
     plt.xticks(x_ticks, x_ticks)
-    plt.xlabel(labels[groupby])
+    plt.xlabel(LABELS[groupby])
     plt.ylabel('improvement')
     # plt.legend()
     plt.tight_layout()

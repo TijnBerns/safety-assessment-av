@@ -12,7 +12,7 @@ def main(type: str = 'asd'):
     if type == 'combined_data':
         estimator.UnivariatePipeline(estimator.CombinedData).run_pipeline(estimator.KDEEstimator(), root)
     elif type == 'naive_ensemble': 
-        estimator.UnivariatePipeline(estimator.NaiveEnsemble).run_pipeline(estimator.KDEEstimator(), root)
+        # estimator.UnivariatePipeline(estimator.NaiveEnsemble).run_pipeline(estimator.KDEEstimator(), root)
         estimator.MultivariatePipeline(estimator.NaiveEnsemble).run_pipeline(estimator.KDEEstimator(), root)
     
 if __name__ == "__main__":

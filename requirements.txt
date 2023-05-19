@@ -5,5 +5,11 @@ scikit-learn
 tqdm
 click
 torch
+torchvision
 torchmetrics
 pytorch-lightning
+scikit-image
+tensorboard
+tensorboardx
+h5py
+nflows 

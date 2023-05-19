@@ -175,18 +175,21 @@ class NaiveEnsemble(EstimatorType):
         p_normal_estimate = 1 - p_edge_estimate
 
         # Fit data to estimators
-        baseline_estimator.fit(normal_data[:, :-1], **kwargs)
-        normal_estimator.fit(normal_data_filtered[:, :-1], **kwargs)
-        edge_estimator.fit(edge_data_filtered[:, :-1], **kwargs)
+        # TODO: Determine whether to reduce dims here e.g. X2 in case of 2d data
+        baseline_estimator.fit(normal_data, **kwargs)
+        normal_estimator.fit(normal_data_filtered, **kwargs)
+        edge_estimator.fit(edge_data_filtered, **kwargs)
         improved_estimator = lambda x: p_normal_estimate * normal_estimator.estimate_pdf(x) + p_edge_estimate * edge_estimator.estimate_pdf(x)
         
         # Obtain estimates of pdf
         baseline_pdf = baseline_estimator.estimate_pdf(x_values)
         improved_pdf = improved_estimator(x_values)
 
+        # TODO: Fix multi variate epsilon support 
         # Obtain estimates of epsilon support
-        baseline_eps = data_utils.get_epsilon_support_uv(baseline_estimator.estimate_pdf, uv_params.epsilon, x_values)
-        improved_eps = data_utils.get_epsilon_support_uv(improved_estimator, uv_params.epsilon, x_values)
+        # baseline_eps = data_utils.get_epsilon_support_uv(baseline_estimator.estimate_pdf, uv_params.epsilon, x_values)
+        # improved_eps = data_utils.get_epsilon_support_uv(improved_estimator, uv_params.epsilon, x_values)
+        baseline_eps, improved_eps = 0, 0
         
         return baseline_pdf, improved_pdf, baseline_eps, improved_eps
 
@@ -272,10 +275,7 @@ class MultivariatePipeline():
         
         for p_event, num_normal, num_event in parameters:
             # Construct evaluation grid
-            eval_intervals = data_utils.get_evaluation_interval(distributions)
-            x_values_grid = np.meshgrid(*eval_intervals[:-1])
-            x_values = np.dstack(x_values_grid)
-            x_values = x_values.reshape((x_values.shape[0] * x_values.shape[1], 2))
+            x_values = data_utils.get_evaluation_interval(distributions)
             
             # Get true distribution
             true = uv_distribution.pdf(x_values)
@@ -289,7 +289,7 @@ class MultivariatePipeline():
                 normal_data, event_data = data_utils.generate_data(mv_distribution, num_normal, num_event, threshold, random_state=run)
 
                 # Obtain estimates
-                baseline, improved = self.estimator_type.obtain_estimates(estimator, uv_distribution, normal_data, event_data, threshold, x_values, distribution_str, *args, **kwargs)
+                baseline, improved, _, _ = self.estimator_type.obtain_estimates(estimator, uv_distribution, normal_data, event_data, threshold, x_values, distribution_str, *args, **kwargs)
                 baseline_estimates[f'run_{run}'] = baseline.tolist()
                 improved_estimates[f'run_{run}'] = improved.tolist()
                 

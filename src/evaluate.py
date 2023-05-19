@@ -178,64 +178,8 @@ def mv_evaluation_pipeline(path: Path):
         }))
 
 
-# @click.command()
-# @click.option('--path', '-p', type=Path)
-# def temp(path: Path):
-#     """Temporary method used to plot 2d estimates
-
-#     Args:
-#         path (Path): _description_
-#     """
-#     for f in tqdm(list(path.glob('**/*'))):
-#         if not f.is_dir() or f.name.find('results') != -1:
-#             continue
-#         try:
-#             # This fails if not all columns in the cvs have equal rows
-#             baseline_df = load_json_as_df(f / (f.name + '.baseline.json'))
-#             improved_df = load_json_as_df(f / (f.name + '.improved.json'))
-#             print(baseline_df)
-#             # baseline_mse, baseline_mean, baseline_std, _, _ = evaluate(baseline_df)
-#             # improved_mse, improved_mean, improved_std, _ ,_ = evaluate(improved_df)
-#         except Exception as e:
-#             print(f"WARNING: Could not evaluate for {str(f)}\n{e}")
-#             continue
-
-#         x_values = baseline_df['x'].to_list()
-#         a = int(np.sqrt(len(x_values)))
-#         x_values = np.array(x_values)
-#         x_values = x_values.reshape((a, a, 2))
-#         X = x_values[:, :, 0]
-#         Y = x_values[:, :, 1]
-
-#         true = baseline_df['true'].to_list()
-#         true = np.array(true)
-#         true = true.reshape(a, a)
-
-#         run_cols = [col for col in improved_df if col.startswith('run')]
-#         estimates = improved_df[run_cols].to_numpy()
-#         mean = np.mean(estimates.T, axis=0)
-#         mean = mean.reshape(a, a)
-
-#         # error = np.log(np.square(true - estimate))
-#         error = np.abs(true - mean)
-
-#         fig, axs = plt.subplots(1, 3, subplot_kw={"projection": '3d'})
-#         # for ax in axs:
-#         #     ax = plt.axes(projection ='3d')
-
-#         # axs[0] = plt.axes(projection ='3d')
-#         axs[2].plot_surface(X, Y, error)
-#         axs[0].plot_surface(X, Y, true)
-#         axs[1].plot_surface(X, Y, mean)
-#         plt.show()
-
-
 if __name__ == "__main__":
     # mv_evaluation_pipeline()
     uv_evaluation_pipeline()
-    # temp(test_a,test_b)
-    # print(test_a)
-    # print(test_b)
-    # print(union(test_a, test_b))
-    # print(intersection(test_a, test_b))
-    # breakpoint()
+    # temp('/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/test.json')
+
