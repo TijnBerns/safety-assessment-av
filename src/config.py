@@ -154,8 +154,8 @@ class MVParameters(SharedParameters):
     
 class FlowParameters(SharedParameters):
     batch_size = 128
-    training_steps_stage_1 = 1000
-    training_steps_stage_2 = 2000
+    training_steps_stage_1 = 3000
+    training_steps_stage_2 = 6000
     learning_rate_stage_1 = 3e-3
     learning_rate_stage_2 = 3e-3
     logging_interval = 50

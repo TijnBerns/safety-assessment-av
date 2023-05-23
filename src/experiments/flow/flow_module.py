@@ -9,7 +9,7 @@ from nflows import flows, distributions, transforms
 from nflows.nn.nets import ResidualNet
 import utils
 from config import FlowParameters as args
-from torch import nn
+from tqdm import tqdm
 
 def create_linear_transform(features):
     return transforms.CompositeTransform([
@@ -47,34 +47,34 @@ def create_transform(features):
     ])
     return transform
 
-# def create_flow(features):
-#     # create model
-#     flow_distribution = distributions.StandardNormal((features,))
-#     transform = create_transform(features)
-#     return flows.Flow(transform, flow_distribution)
-
 def create_flow(features):
-    num_layers = 5
-    base_dist = distributions.StandardNormal((features,))
+    # create model
+    flow_distribution = distributions.StandardNormal((features,))
+    transform = create_transform(features)
+    return flows.Flow(transform, flow_distribution)
 
-    transform = []
-    for _ in range(num_layers):
-        transform.append(transforms.ReversePermutation(features=2))
-        transform.append(transforms.MaskedAffineAutoregressiveTransform(features=features, 
-                                                            hidden_features=4, 
-                                                            context_features=0))
-    transform = transforms.CompositeTransform(transform)
+# def create_flow(features):
+#     num_layers = 5
+#     base_dist = distributions.StandardNormal((features,))
 
-    flow = flows.Flow(transform, base_dist)
-    return flow
+#     transform = []
+#     for _ in range(num_layers):
+#         transform.append(transforms.ReversePermutation(features=features))
+#         transform.append(transforms.MaskedAffineAutoregressiveTransform(features=features, 
+#                                                             hidden_features=4, 
+#                                                             context_features=0))
+#     transform = transforms.CompositeTransform(transform)
+
+#     flow = flows.Flow(transform, base_dist)
+#     return flow
 
 class FlowModule(pl.LightningModule):
     def __init__(self,  
+                 features: int,
                  lr_stage_one: float = args.learning_rate_stage_1, 
                  lr_stage_two: float = args.learning_rate_stage_2, 
                  max_steps_stage_one: int = args.training_steps_stage_1, 
                  max_steps_stage_two: int = args.training_steps_stage_2, 
-                 features: int = args.features,
                  batch_size: int =args.batch_size,
                  stage: int=1) -> None:
         super().__init__()
@@ -133,14 +133,30 @@ class FlowModule(pl.LightningModule):
                 
         return prob
     
-    def compute_log_prob(self, x_values: torch.Tensor):
-        x_values =x_values.float()
+    def compute_log_prob(self, dataloader: DataLoader):
+        log_prob = MeanMetric()
         with torch.no_grad():
-            log_prob = self.flow.log_prob(x_values)
+            for batch in tqdm(dataloader):
+                log_prob(self.forward(batch))
             
-        return log_prob.mean(), log_prob.std()
-
-
+        return log_prob.compute()
+    
+    def freeze_partially(self):
+        named_modules = list(self.flow._transform._transforms.named_children())
+        for i in range(min(len(named_modules), 2)):
+            named_modules[i][1].requires_grad_(False)
+        # for test in 
+        #     breakpoint()
+        # self.flow._transform.requires_grad_(False)
+        # transform = transforms.CompositeTransform([
+        #     transforms.CompositeTransform([
+        #         create_linear_transform(self.features),
+        #         create_base_transform(self.features, i)
+        #     ]) for i in range(args.num_flow_steps)
+        # ])
+        # self.flow._transform.add_module("test", transform)
+       
+        
     def configure_optimizers(self) -> None:
         # setup the optimization algorithm
         if self.stage == 1:
