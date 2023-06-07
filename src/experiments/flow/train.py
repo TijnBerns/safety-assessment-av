@@ -2,37 +2,27 @@ import sys
 sys.path.append('src')
 
 import utils
-import data.data_utils as data_utils
-from flow_module import FlowModule
-from config import FlowParameters as args
-from config import MVParameters as parameters
+import parameters
+from flow_module import FlowModule, FlowModuleWeighted
 
 import click
+import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
-
-from data.power import Power
-from data.miniboone import MiniBoone
-from data.gas import Gas
-from data.hepmass import Hepmass
-from data.bsds300 import BSDS300Dataset
-
-datasets = {
-    'miniboone': MiniBoone,
-    'gas': Gas,
-    'power': Power,
-    'hepmass': Hepmass,
-    'bsds300': BSDS300Dataset
-}
+from data.base import CustomDataset
 
 
-def create_checkpointer():
-    pattern = "epoch_{epoch:04d}.step_{step:09d}.log_density_{log_density:.2f}"
+
+def create_checkpointer(prefix:str=None):
+    if prefix is None:
+        pattern = "epoch_{epoch:04d}.step_{step:09d}.log_density_{val_log_density:.2f}"
+    else:
+        pattern = prefix + ".epoch_{epoch:04d}.step_{step:09d}.log_density_{val_log_density:.2f}"
     ModelCheckpoint.CHECKPOINT_NAME_LAST = pattern + ".last"
     checkpointer = ModelCheckpoint(
-        save_top_k=1,
-        every_n_train_steps=50,
+        save_top_k=5,
+        every_n_epochs=1,
         monitor="val_log_density",
         mode='max',
         filename=pattern + ".best",
@@ -45,74 +35,75 @@ def train_val_split(data, frac):
     split_idx = int(frac * len(data))
     return  data[:split_idx], data[split_idx:]
 
-# def create_data_loaders():
-#     # Generate/load data
-#     distributions_, _, distribution = parameters.get_distributions()
-#     threshold = data_utils.determine_threshold(args.p_event, distributions_[-1])
-#     normal_data, event_data = data_utils.generate_data(distribution, args.num_normal, args.num_event, threshold)
-#     _, event_data = data_utils.filter_data(normal_data, event_data, threshold)
 
-#     normal_data_train, normal_data_val = train_val_split(normal_data, args.val_frac) 
-#     event_data_train, event_data_val = train_val_split(event_data, args.val_frac) 
-    
-#     return (DataLoader(normal_data_train, shuffle=True, batch_size=args.batch_size),
-#             DataLoader(normal_data_val, shuffle=False, batch_size=args.batch_size),
-#             DataLoader(event_data_train, shuffle=True,batch_size=args.batch_size),
-#             DataLoader(event_data_val, shuffle=False,batch_size=args.batch_size),
-#             ) 
+def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str):
+    val = DataLoader(dataset(split='_val'), shuffle=False, batch_size=batch_size, num_workers=2)
+    if dataset_type == 'all':
+        train = DataLoader(dataset(split='_train'), shuffle=True, batch_size=batch_size)
+        return train, None, val
+    elif dataset_type == 'weighted' or dataset_type=='zero_weight':
+        normal = dataset(split='normal_train').data 
+        event = dataset(split='event_train').data  
+        train = DataLoader(np.concatenate((normal, event)), shuffle=True, batch_size=batch_size, num_workers=2)
+        return train, None, val 
+    elif dataset_type == 'split':
+        train_normal = DataLoader(dataset(split='normal_train'), shuffle=True, batch_size=batch_size)
+        train_event = DataLoader(dataset(split='event_train'), shuffle=True, batch_size=batch_size)
+        return train_normal, train_event, val
+    else: 
+        raise ValueError
 
-def create_data_loaders(dataset_str:str):
-    # Generate/load data
-    dataset = datasets[dataset_str ]
+def create_module(dataset, features, dataset_type, args, stage):
+    if dataset_type == 'weighted':
+        return FlowModuleWeighted(features=features, dataset=dataset, args=args, stage=stage)
+    else:
+        return FlowModule(features=features, dataset=dataset, args=args, stage=stage)
     
-    return (DataLoader(dataset(split='normal_train'), shuffle=True, batch_size=args.batch_size),
-            DataLoader(dataset(split='event_train'), shuffle=False, batch_size=args.batch_size),
-            DataLoader(dataset(split='normal_val'), shuffle=True,batch_size=args.batch_size),
-            DataLoader(dataset(split='event_val'), shuffle=False,batch_size=args.batch_size),
-            ) 
+    
 
 @click.command()
-@click.option('--pre_train', type=bool, default=True)
-@click.option('--dataset', type=str, default='gas')
-def train(pre_train: bool, dataset:str):
-    
-    
-    # # Construct data loaders
-    normal_train, event_train, normal_val, event_val = create_data_loaders()
-    # normal_train = DataLoader(Power(split='normal_train'), shuffle=True, batch_size=args.batch_size)
-    # event_train = DataLoader(Power(split='event_train'), shuffle=True,  batch_size=args.batch_size)
-    # normal_val = DataLoader(Power(split='normal_val'), shuffle=False,  batch_size=args.batch_size)
-    # event_val = DataLoader(Power(split='event_val'), shuffle=False,  batch_size=args.batch_size)
-    # test = DataLoader(Power(split='test'),shuffle=False,  batch_size=args.batch_size)
+@click.option('--pretrain', type=bool, default=True)
+@click.option('--dataset', type=str, default='hepmass')
+@click.option('--dataset_type', type=str, default='default') #choices=['weighted','all','split', 'zero_weight']
+def train(pretrain: bool, dataset:str, dataset_type: str):    
+    # Construct data loaders
+    args = parameters.get_parameters(dataset)
+    dataset = parameters.get_dataset(dataset)
+    normal_train, event_train, val = create_data_loaders(dataset, args.batch_size, dataset_type)
     
     # Get device
     device, _ = utils.set_device()
     
     # create model
-    flow_module = FlowModule(features=normal_train.dataset.data.shape[1])
+    features = normal_train.dataset.data.shape[1]
+    flow_module = create_module(features=features, dataset=dataset(), dataset_type=dataset_type, args=args, stage=1)
 
     # Initialize checkpointers
-    checkpointer_stage_1 = create_checkpointer()
-    checkpointer_stage_2 = create_checkpointer()
+    checkpointer = create_checkpointer()
 
-    if pre_train:
+    if pretrain:
         # Pre-train on event data
         trainer_stage_1 = pl.Trainer(max_steps=args.training_steps_stage_1,
                                      inference_mode=False,
-                                     callbacks=[checkpointer_stage_1],
+                                     enable_checkpointing=False,
                                      log_every_n_steps=args.logging_interval,
                                      accelerator=device)
-        trainer_stage_1.fit(flow_module, event_train, event_val)
+        trainer_stage_1.fit(flow_module, event_train, val)
         flow_module.freeze_partially()
+    else:
+        args.training_steps_stage_2 = args.training_steps_stage_1 + args.training_steps_stage_2
+        args.learning_rate_stage_2 = args.learning_rate_stage_1
+        flow_module.max_steps_stage_two = args.training_steps_stage_2
+        flow_module.lr_stage_two = args.learning_rate_stage_2
 
     # Fine-tune on normal data
     trainer_stage_2 = pl.Trainer(max_steps=args.training_steps_stage_2,
                                  inference_mode=False,
-                                 callbacks=[checkpointer_stage_2],
+                                 callbacks=[checkpointer],
                                  log_every_n_steps=args.logging_interval,
                                  accelerator=device)
     flow_module.set_stage(2)
-    trainer_stage_2.fit(flow_module, normal_train, normal_val)
+    trainer_stage_2.fit(flow_module, normal_train, val)
 
 
 if __name__ == "__main__":

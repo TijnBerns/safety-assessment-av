@@ -1,28 +1,21 @@
+
+import sys
+sys.path.append('src')
+
 import os
 from pathlib import Path
 import numpy as np
-from base import CustomDataset, split_data
+from data.base import CustomDataset, split_data
 import pandas as pd
 import h5py
 
 
 class BSDS300Dataset(CustomDataset):
     def __init__(self, split=None, frac=None):
-        self.root = Path(os.environ['DATAROOT']) / self.root
-        self.path = self.root / 'bsds300.hdf5'
-        
-        splits = dict(zip(
-            ('train', 'val', 'test'),
-            self.load_data()
-        ))
-        
-        self.data = np.array(splits[split]).astype(np.float32)
-        self.n, self.dim = self.data.shape
-        if frac is not None:
-            self.n = int(frac * self.n)
+        super().__init__(Path(os.environ['DATAROOT']) / 'BSDS300', split)       
             
     def load_data(self):
-        file = h5py.File(self.path, 'r')
+        file = h5py.File(self.root / 'BSDS300.hdf5', 'r')
         return file['train'], file['validation'], file['test']
 
     def __getitem__(self, item):

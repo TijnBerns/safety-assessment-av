@@ -1,21 +1,17 @@
+import sys
+sys.path.append('src')
+
 import os
 from pathlib import Path
 import numpy as np
-from base import CustomDataset
+from data.base import CustomDataset, split_data
 import pandas as pd
 from collections import Counter
 
 class Hepmass(CustomDataset):
     def __init__(self, split=None) -> None:
-        self.root = Path(os.environ['DATAROOT']) / 'hepmass'
-        self.split = split
-        if split is None:
-            self.path = None
-            self.data = None
-        else:
-            self.path = self.root / (split + '.npy')
-            self.data = np.load(self.path)
-        
+        super().__init__(Path(os.environ['DATAROOT']) / 'hepmass', split)
+    
     def load_data(self):
         # Following https://github.com/bayesiains/nsf/blob/master/data/hepmass.py
         train = pd.read_csv(self.root / '1000_train.csv', index_col=False)
@@ -50,4 +46,9 @@ class Hepmass(CustomDataset):
 
     def __getitem__(self, index):
         return self.data[index]
+    
+    def __len__(self):
+        return len(self.data)
+    
+
     

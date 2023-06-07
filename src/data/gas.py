@@ -9,18 +9,11 @@ import pandas as pd
 
 class Gas(CustomDataset):
     def __init__(self, split=None) -> None:
-        self.root = Path(os.environ['DATAROOT']) / 'gas'
-        self.split = split
-        if split is None:
-            self.path = None
-            self.data = None
-        else:
-            self.path = self.root / (split + '.npy')
-            self.data = np.load(self.path)
+        super().__init__(Path(os.environ['DATAROOT']) / 'gas', split)
         
     def load_data(self):
         # Following https://github.com/gpapamak/maf/blob/master/datasets/gas.py
-        
+
         data = pd.read_pickle(self.root / 'ethylene_CO.pickle')
         data.drop("Meth", axis=1, inplace=True)
         data.drop("Eth", axis=1, inplace=True)
@@ -31,7 +24,7 @@ class Gas(CustomDataset):
             C = data.corr()
             A = C > 0.98
             B = A.values.sum(axis=1)
-            return C
+            return B
 
         # Clean data
         B = get_correlation_numbers(data)

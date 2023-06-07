@@ -1,22 +1,43 @@
 from torch.utils.data import Dataset
 import numpy as np
-from utils import save_csv, save_json, save_np
+from utils import load_json
 from config import FlowParameters
 import os
 from pathlib import Path
 
 class CustomDataset(Dataset):
-    def __init__(self) -> None:
-        self.root = os.environ['DATAROOT']
-        self.path = None
-        self.data = None
-        raise NotImplementedError
+    def __init__(self, root:Path, split=None) -> None:
+        self.root = root
+        self.name = root.name
+        self.split = split
+        if split is None:
+            self.path = None
+            self.data = None
+        else:
+            self.path = self.root / (split + '.npy')
+            self.data = np.load(self.path)
         
+        self.load_stats()
+
     def load_data():
         raise NotImplementedError
+    
+    def load_stats(self):
+        try:
+            stats = load_json(Path(self.root) / 'stats.json')
+            self.xi = stats['Xi']
+            self.threshold = stats['threshold']
+            self.weight = stats['weight']
+        except (FileNotFoundError, KeyError):
+            print('Cannot initialize stats yet, try preprocessing data first.')
+            return None
+        return stats
         
     def __getitem__(self, index):
-        raise NotImplementedError
+        raise self.data[index]
+    
+    def __len__(self):
+        return len(self.data)
     
 
 def split_data(data: np.ndarray, frac: float = 0.9):

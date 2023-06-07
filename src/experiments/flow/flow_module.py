@@ -7,9 +7,11 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from nflows import flows, distributions, transforms
 from nflows.nn.nets import ResidualNet
+from experiments.flow.parameters import Parameters
 import utils
-from config import FlowParameters as args
 from tqdm import tqdm
+from parameters import Parameters
+from data.base import CustomDataset
 
 def create_linear_transform(features):
     return transforms.CompositeTransform([
@@ -17,7 +19,7 @@ def create_linear_transform(features):
         transforms.LULinear(features, identity_init=True)
     ])
 
-def create_base_transform(features, i):
+def create_base_transform(features: int, i: int, args: Parameters):
     return transforms.PiecewiseRationalQuadraticCouplingTransform(
         mask=utils.create_alternating_binary_mask(features, even=(i % 2 == 0)),
         transform_net_create_fn=lambda in_features, out_features: ResidualNet(
@@ -36,21 +38,21 @@ def create_base_transform(features, i):
         apply_unconditional_transform=args.apply_unconditional_transform
     )
 
-def create_transform(features):
+def create_transform(features: int, args: Parameters):
     transform = transforms.CompositeTransform([
         transforms.CompositeTransform([
             create_linear_transform(features),
-            create_base_transform(features, i)
+            create_base_transform(features, i, args)
         ]) for i in range(args.num_flow_steps)
     ] + [
         create_linear_transform(features)
     ])
     return transform
 
-def create_flow(features):
+def create_flow(features: int, args: Parameters):
     # create model
     flow_distribution = distributions.StandardNormal((features,))
-    transform = create_transform(features)
+    transform = create_transform(features, args)
     return flows.Flow(transform, flow_distribution)
 
 # def create_flow(features):
@@ -71,22 +73,24 @@ def create_flow(features):
 class FlowModule(pl.LightningModule):
     def __init__(self,  
                  features: int,
-                 lr_stage_one: float = args.learning_rate_stage_1, 
-                 lr_stage_two: float = args.learning_rate_stage_2, 
-                 max_steps_stage_one: int = args.training_steps_stage_1, 
-                 max_steps_stage_two: int = args.training_steps_stage_2, 
-                 batch_size: int =args.batch_size,
+                 dataset: CustomDataset,
+                 args: Parameters, 
                  stage: int=1) -> None:
         super().__init__()
         self.features = features
-        self.flow = create_flow(features)
+        self.flow = create_flow(features,args)
         self.stage = stage
-        self.batch_size = batch_size
-        self.lr_stage_one = lr_stage_one
-        self.lr_stage_two = lr_stage_two
-        self.max_steps_stage_one = max_steps_stage_one
-        self.max_steps_stage_two = max_steps_stage_two
+        self.batch_size = args.batch_size
+        self.lr_stage_one = args.learning_rate_stage_1
+        self.lr_stage_two = args.learning_rate_stage_2
+        self.max_steps_stage_one = args.training_steps_stage_1
+        self.max_steps_stage_two = args.training_steps_stage_2
         
+        # For weighted training
+        self.xi = dataset.xi
+        self.threshold = dataset.threshold
+        self.event_weight = dataset.weight
+                
         # Metrics
         self.train_mean_log_density: MeanMetric = MeanMetric()
         self.val_mean_log_density: MeanMetric = MeanMetric()
@@ -134,16 +138,17 @@ class FlowModule(pl.LightningModule):
         return prob
     
     def compute_log_prob(self, dataloader: DataLoader):
-        log_prob = MeanMetric()
+        log_prob = MeanMetric().to(self.device)
         with torch.no_grad():
             for batch in tqdm(dataloader):
+                batch = batch.to(self.device)
                 log_prob(self.forward(batch))
             
         return log_prob.compute()
     
     def freeze_partially(self):
         named_modules = list(self.flow._transform._transforms.named_children())
-        for i in range(min(len(named_modules), 2)):
+        for i in range(len(named_modules) // 2):
             named_modules[i][1].requires_grad_(False)
         # for test in 
         #     breakpoint()
@@ -162,51 +167,70 @@ class FlowModule(pl.LightningModule):
         if self.stage == 1:
             optimizer = torch.optim.Adam(
                 self.flow.parameters(), lr=self.lr_stage_one)
-            # schedule = {
-            #     "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
-            #         optimizer,
-            #         T_max=self.max_steps_stage_one,
-            #         eta_min=0),
-            #     "interval": "step",
-            #     "frequency": 1,
-            #     "monitor": "val_log_density",
-            #     "strict": True,
-            #     "name": None,
-            # }
+            schedule = {
+                "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
+                    optimizer,
+                    T_max=self.max_steps_stage_one,
+                    eta_min=0),
+                "interval": "step",
+                "frequency": 1,
+                "monitor": "val_log_density",
+                "strict": True,
+                "name": None,
+            }
         elif self.stage == 2:
             optimizer = torch.optim.Adam(
                 self.flow.parameters(), lr=self.lr_stage_two)
             # setup the learning rate schedule.
-            # schedule = {
-            #     # Required: the scheduler instance.edu
-            #     "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
-            #         optimizer,
-            #         T_max=self.max_steps_stage_two,
-            #         eta_min=0),
-            #     # The unit of the scheduler's step size, could also be 'step'.
-            #     # 'epoch' updates the scheduler on epoch end whereas 'step'
-            #     # updates it after an optimizer update.    # def _extract_embeddings_batch(self, hidden_states: torch.Tensor, processed_logits: torch.Tensor):
-            #     "interval": "step",
-            #     # How many epochs/steps should pass between calls to
-            #     # `scheduler.step()`. 1 corresponds to updating the learning
-            #     # rate after every epoch/step.
-            #     "frequency": 1,
-            #     "monitor": "val_log_density",
-            #     # If using the `LearningRateMonitor` callback to monitor the
-            #     # learning rate progress, this keyword can be used to specify
-            #     # a custom logged nameself.stage = stage
-            #     "name": "lr",
-            # }
+            schedule = {
+                # Required: the scheduler instance.edu
+                "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
+                    optimizer,
+                    T_max=self.max_steps_stage_two,
+                    eta_min=0),
+                # The unit of the scheduler's step size, could also be 'step'.
+                # 'epoch' updates the scheduler on epoch end whereas 'step'
+                # updates it after an optimizer update.    # def _extract_embeddings_batch(self, hidden_states: torch.Tensor, processed_logits: torch.Tensor):
+                "interval": "step",
+                # How many epochs/steps should pass between calls to
+                # `scheduler.step()`. 1 corresponds to updating the learning
+                # rate after every epoch/step.
+                "frequency": 1,
+                "monitor": "val_log_density",
+                # If using the `LearningRateMonitor` callback to monitor the
+                # learning rate progress, this keyword can be used to specify
+                # a custom logged nameself.stage = stage
+                "name": "lr",
+            }
         else:
             raise ValueError
-
-        # return [optimizer], [schedule]
-        return [optimizer]
+ 
+        return [optimizer], [schedule]
     
     def set_stage(self, stage):
         assert stage <= 2 and stage > 0, f"The stage of the model must be either 1 or 2 but got {stage}"
         self.stage = stage
         self.configure_optimizers()
+        
+        
+class FlowModuleWeighted(FlowModule):
+    def __init__(self, features: int, args: Parameters, dataset:CustomDataset , stage: int = 1) -> None:
+        super().__init__(features=features, args=args, dataset=dataset, stage=stage)
+    
+    def training_step(self, batch, batch_idx) -> torch.Tensor:
+        normal = self.forward(batch[batch[:,self.xi] <= self.threshold])
+        event = self.forward(batch[batch[:,self.xi] > self.threshold])
+        weighted_log_density = torch.cat((normal, self.event_weight * event))
+        loss = - torch.mean(weighted_log_density)
+        self.train_mean_log_density(-loss)
+        self.log("weighted_log_density", -loss, batch_size=self.batch_size)
+        
+        log_density = torch.mean(torch.cat((normal, event)))
+        self.log("log_density", log_density, batch_size=self.batch_size, prog_bar=True)
+        return loss
+        
+    
+    
 
         
     

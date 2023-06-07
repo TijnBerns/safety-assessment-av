@@ -13,14 +13,8 @@ from data.base import CustomDataset, split_data
     
 class MiniBoone(CustomDataset):
     def __init__(self, split='data') -> None:
-        self.root = Path(os.environ['DATAROOT']) / 'miniboone'
-        self.split = split
-        if split is None:
-            self.path = None
-            self.data = None
-        else:
-            self.path = self.root / (split + '.npy')
-            self.data = np.load(self.path)
+        super().__init__(Path(os.environ['DATAROOT']) / 'miniboone', split)
+
         
     def load_data(self):
         data = np.load(self.root / 'data.npy')

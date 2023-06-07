@@ -10,15 +10,7 @@ import pandas as pd
 
 class Power(CustomDataset):
     def __init__(self, split=None) -> None:
-        self.root = Path(os.environ['DATAROOT']) / 'power'
-        self.split = split
-        
-        if split is None:
-            self.path = None
-            self.data = None
-        else:
-            self.path = self.root / (split + '.npy')
-            self.data = np.load(self.path)
+        super().__init__(Path(os.environ['DATAROOT']) / 'power', split)
         
     def load_data(self):
         # Following https://github.com/gpapamak/maf/blob/master/datasets/power.py
