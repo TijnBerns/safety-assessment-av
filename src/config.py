@@ -81,10 +81,10 @@ class UVParameters(SharedParameters):
 
     # Distributions
     distributions = [
-        # 'mv_gaussian'
-        'gaussian',
-        # 'gumbel',
-        # 'beta'
+        # 'gaussian',
+        'gumbel',
+        'beta',
+        't'
     ]
 
     # Other parameters
@@ -105,7 +105,7 @@ class UVParameters(SharedParameters):
             'gaussian': [scipy.stats.norm(0, 2), scipy.stats.norm()],
             'gumbel': [scipy.stats.gumbel_r(), scipy.stats.norm()],
             'beta': [scipy.stats.beta(0.5, 0.5), scipy.stats.norm()],
-            'laplace': [scipy.stats.laplace(), scipy.stats.norm()]
+            't': [scipy.stats.t(1), scipy.stats.norm()]
         }
 
         c_target = np.array([[1.0, correlation,], [correlation,  1.0]])

@@ -176,6 +176,10 @@ class NaiveEnsemble(EstimatorType):
 
         # Fit data to estimators
         # TODO: Determine whether to reduce dims here e.g. X2 in case of 2d data
+        normal_data = normal_data[:,0]
+        edge_data = edge_data[:,0]
+        normal_data_filtered = normal_data_filtered[:,0]
+        edge_data_filtered = edge_data_filtered[:,0]
         baseline_estimator.fit(normal_data, **kwargs)
         normal_estimator.fit(normal_data_filtered, **kwargs)
         edge_estimator.fit(edge_data_filtered, **kwargs)
