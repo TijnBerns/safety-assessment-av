@@ -18,7 +18,7 @@ from pathlib import Path
 from tqdm import tqdm
 import utils
 import pandas as pd
-import evaluate
+import evaluate_todo
 import numpy as np 
 import scipy.stats
 
@@ -50,7 +50,7 @@ def extend_dict(f: Path, suffix: str):
     estimates['num_event'] = n_edge
     estimates['correlation'] =  corr
     
-    _, jaccard_mean, jaccard_std = evaluate.evaluate_epsilon_support(estimates)
+    _, jaccard_mean, jaccard_std = evaluate_todo.evaluate_epsilon_support(estimates)
     estimates['jaccard_mean'] = jaccard_mean
     estimates['jaccard_std'] = jaccard_std
     # estimates['mean'] = mean

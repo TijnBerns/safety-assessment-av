@@ -4,9 +4,9 @@ sys.path.append('src')
 
 import os
 from pathlib import Path
-import numpy as np
-from data.base import CustomDataset, split_data
-import pandas as pd
+
+from data.base import CustomDataset
+
 import h5py
 
 

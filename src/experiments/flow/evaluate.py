@@ -5,44 +5,83 @@ import data.data_utils as data_utils
 import utils
 from pathlib import Path
 
-
+from typing import Tuple
 import click
 from torch.utils.data import DataLoader
 from flow_module import FlowModule
-from config import MVParameters as mv_params
-from config import FlowParameters as flow_params
 import matplotlib.pyplot as plt
 import parameters
 from utils import save_json
 import pandas as pd
+import numpy as np
+from scipy.stats import uniform
+from typing import List
+from tqdm import tqdm
 
 
-def write_results(row):
+def sample_test(dataset: str, num_samples:int = int(1e6)):
+    custom_dataset = parameters.get_dataset(dataset)
+    train = custom_dataset(split='_train')   
+
+    variable_min = np.min(train.data, axis=0)
+    variable_max = np.max(train.data, axis=0)
+    test = np.zeros((num_samples, len(variable_min)))
+    
+    for i, (vmin, vmax) in enumerate(zip(variable_min, variable_max)):
+        da = uniform(loc=vmin, scale=vmax).rvs(size=num_samples)
+        test[:,i] = da
+       
+    return test 
+        
+
+def write_results(row: List[float]):
+    """Append a row to 'results.csv'
+
+    Args:
+        row (List[float]): Row of length three, containing log-likelihood values.
+    """
     results_file = Path('results.csv')
     if not results_file.exists():
         results_file.touch()
         with open(results_file, 'w') as f:
-            f.write('version, all, normal, event')
+            f.write('version, all, all_std, normal, normal_std, event, event_std')
     df = pd.read_csv(results_file, index_col=False)
     df.loc[-1] = row
     df.to_csv(results_file, index=False)
-    
-def sort_fn(path: Path):
-    s = path.name.split('.')
-    r = s[-3]
-    m = s[-4][-3:]
-    if m[0] == '_':
-        m = m[1:]
-    return float(f'{m}.{r}')
-    
 
-def get_checkpoint(version):
+
+# def sort_fn(path: Path) -> float:
+#     """Utility function used to sort checkpoints files
+
+#     Args:
+#         path (Path): Checkpoint path
+
+#     Returns:
+#         float: Log-likelihood of saved checkpoint
+#     """
+#     s = path.name.split('.')
+#     r = s[-3]
+#     m = s[-4][-3:]
+#     if m[0] == '_':
+#         m = m[1:]
+#     return float(f'{m}.{r}')
+
+
+def get_checkpoint(version: str) -> Tuple[Path, Path]:
+    """Loads the best checkpoint and last checkpoint
+
+    Args:
+        version (str): The version that is used to load the checkpoints.
+
+    Returns:
+        Tuple[Path, Path]: Path to best and last checkpoint respectively.
+    """
     path = Path(f'/home/tberns/safety-assessment-av/lightning_logs/version_{version}/checkpoints')
     best_checkpoint = list(path.rglob('*best.ckpt'))
-    best_checkpoint.sort(key=sort_fn)
+    # best_checkpoint.sort(key=sort_fn)
 
     # last_checkpoint = list(path.rglob('*last.ckpt'))[0]
-    return best_checkpoint[-1], None
+    return best_checkpoint, None
 
 
 def eval(checkpoint, version, dataset):
@@ -61,29 +100,18 @@ def eval(checkpoint, version, dataset):
     features = normal.data.shape[1]
     
     # Initialize dataloaders
-    normal = DataLoader(normal, batch_size=flow_params.batch_size)
-    event = DataLoader(event, batch_size=flow_params.batch_size)
-    test = DataLoader(test, batch_size=flow_params.batch_size)
-    _test = DataLoader(_test, batch_size=flow_params.batch_size)
+    normal = DataLoader(normal, batch_size=args.batch_size, num_workers=args.num_workers)
+    event = DataLoader(event, batch_size=args.batch_size, num_workers=args.num_workers)
+    test = DataLoader(test, batch_size=args.batch_size, num_workers=args.num_workers)
+    _test = DataLoader(_test, batch_size=args.batch_size, num_workers=args.num_workers)
     
     # Load model from checkpoint
     flow_module = FlowModule.load_from_checkpoint(checkpoint, features=features, device=device, args=args, dataset=dataset()).eval()
     flow_module = flow_module.to(device)
-
-    # # Generate/load data
-    # distributions_, _, distribution = mv_params.get_distributions()
-    # threshold = data_utils.determine_threshold(flow_params.p_event, distributions_[-1])
-    # normal_data, event_data = data_utils.generate_data(distribution, flow_params.num_normal, flow_params.num_event, threshold, random_state=2023)
-    # normal_data_only, event_data_only = data_utils.filter_data(normal_data, event_data)
-    
-    
-    # # Convert to tensors
-    # normal_data = torch.Tensor(normal_data)
-    # event_data = torch.Tensor(event_data)
-    # normal_data_only = torch.Tensor(normal_data_only)
-    # event_data_only = torch.Tensor(event_data_only)
     
     # Print log likelihood for normal and event data
+    # print(float(flow_module.compute_log_prob(_test)))
+    
     llh_all = float(flow_module.compute_log_prob(test))
     print(f'log likelihood all {llh_all}')
     
@@ -93,26 +121,6 @@ def eval(checkpoint, version, dataset):
     llh_event = float(flow_module.compute_log_prob(event))
     print(f'log likelihood event {llh_event}')   
     
-    # Store results
-    write_results([version, llh_all, llh_normal, llh_event])
-    
-    # print(f'log likelihood normal {flow_module.compute_log_prob(normal)}')
-    # print(f'log likelihood all (normalized using all train data) {flow_module.compute_log_prob(_test)}')
-
-    # # Create contour plots of true and estimated pdf
-    # x_values = torch.tensor(data_utils.get_evaluation_interval(distributions_, n=200), dtype=torch.float)
-    # xline = torch.unique(x_values[:,0])
-    # yline = torch.unique(x_values[:,1])
-    # xgrid, ygrid = torch.meshgrid(xline, yline)
-    
-    # true = torch.Tensor(distribution.pdf(x_values).reshape(len(xline),len(yline)))
-    # pdf_estimate = flow_module.compute_pdf(x_values).reshape(len(xline),len(yline))
-    # print(f'MSE {((true - pdf_estimate) ** 2).mean()}')
-    
-    # _, ax = plt.subplots(1, 2)
-    # ax[0].contourf(xgrid.numpy(), ygrid.numpy(), true.numpy())
-    # ax[1].contourf(xgrid.numpy(), ygrid.numpy(), pdf_estimate.numpy())
-    # # plt.show()
     return version, llh_all, llh_normal, llh_event
     
 
@@ -121,16 +129,31 @@ def eval(checkpoint, version, dataset):
 @click.option('--version', type=str)
 @click.option('--dataset', default='hepmass')
 def main(version: str, dataset: str):
-    best, last = get_checkpoint(version)
+    best, _ = get_checkpoint(version)
     
-    # evaluate best checkpoint
-    print(f'Evaluating {version} best')
-    eval(best,version + ' best', dataset)
+    llh_all_ls = []
+    llh_normal_ls = []
+    llh_event_ls = []
+    for checkpoint in tqdm(best):
+        # evaluate best checkpoint
+        print(f'Evaluating {version} best')
+        _,  llh_all, llh_normal, llh_event = eval(checkpoint, version + ' best', dataset)
+        llh_all_ls.append(llh_all)
+        llh_normal_ls.append(llh_normal)
+        llh_event_ls.append(llh_event)
+        
+    row = [
+        version, 
+        np.mean(llh_all_ls),
+        np.std(llh_all_ls),
+        np.mean(llh_normal_ls),
+        np.std(llh_normal_ls),
+        np.mean(llh_event_ls),
+        np.std(llh_event_ls)
+    ]
     
-    # # Evaluate last checkpoint
-    # print(f'Evaluating {version} last')
-    # eval(last, version + ' last',dataset)
-    
+    write_results(row)
+           
 
 if __name__ == "__main__":
     main()

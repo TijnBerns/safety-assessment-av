@@ -21,8 +21,8 @@ def create_checkpointer(prefix:str=None):
         pattern = prefix + ".epoch_{epoch:04d}.step_{step:09d}.log_density_{val_log_density:.2f}"
     ModelCheckpoint.CHECKPOINT_NAME_LAST = pattern + ".last"
     checkpointer = ModelCheckpoint(
-        save_top_k=5,
-        every_n_epochs=1,
+        save_top_k=50,
+        every_n_train_steps=100,
         monitor="val_log_density",
         mode='max',
         filename=pattern + ".best",
@@ -35,30 +35,45 @@ def train_val_split(data, frac):
     split_idx = int(frac * len(data))
     return  data[:split_idx], data[split_idx:]
 
-
 def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str):
-    val = DataLoader(dataset(split='_val'), shuffle=False, batch_size=batch_size, num_workers=2)
+    val = DataLoader(dataset(split='val'), shuffle=False, batch_size=batch_size, num_workers=2)
+    
     if dataset_type == 'all':
-        train = DataLoader(dataset(split='_train'), shuffle=True, batch_size=batch_size)
+        train = DataLoader(dataset(split='_train'), shuffle=True, batch_size=batch_size, num_workers=2)
+        val = DataLoader(dataset(split='_val'), shuffle=False, batch_size=batch_size, num_workers=2)
         return train, None, val
+    
+    elif dataset_type == 'split':
+        train_normal = DataLoader(dataset(split='normal_train'), shuffle=True, batch_size=batch_size, num_workers=2)
+        train_event = DataLoader(dataset(split='event_train'), shuffle=True, batch_size=batch_size, num_workers=2)
+        return train_normal, train_event, val
+    
     elif dataset_type == 'weighted' or dataset_type=='zero_weight':
         normal = dataset(split='normal_train').data 
         event = dataset(split='event_train').data  
         train = DataLoader(np.concatenate((normal, event)), shuffle=True, batch_size=batch_size, num_workers=2)
         return train, None, val 
-    elif dataset_type == 'split':
-        train_normal = DataLoader(dataset(split='normal_train'), shuffle=True, batch_size=batch_size)
-        train_event = DataLoader(dataset(split='event_train'), shuffle=True, batch_size=batch_size)
+    
+    elif dataset_type == 'sampled_split':
+        train_normal = DataLoader(dataset(split='normal_sampled'), shuffle=True, batch_size=batch_size, num_workers=2)
+        train_event = DataLoader(dataset(split='event_sampled'), shuffle=True, batch_size=batch_size, num_workers=2)
+        val = DataLoader(dataset(split='val_sampled'), shuffle=False, batch_size=batch_size, num_workers=2)
         return train_normal, train_event, val
+    
+    elif dataset_type == 'sampled_zero_weight' or dataset_type == 'sampled_weighted':
+        normal = dataset(split='normal_sampled').data 
+        event = dataset(split='event_sampled').data  
+        train = DataLoader(np.concatenate((normal, event)), shuffle=True, batch_size=batch_size, num_workers=2)
+        val = DataLoader(dataset(split='val_sampled'), shuffle=False, batch_size=batch_size, num_workers=2)
+        return train, None, val 
     else: 
         raise ValueError
 
 def create_module(dataset, features, dataset_type, args, stage):
-    if dataset_type == 'weighted':
+    if dataset_type in ['weighted', 'sampled_weighted']:
         return FlowModuleWeighted(features=features, dataset=dataset, args=args, stage=stage)
     else:
         return FlowModule(features=features, dataset=dataset, args=args, stage=stage)
-    
     
 
 @click.command()
@@ -89,7 +104,7 @@ def train(pretrain: bool, dataset:str, dataset_type: str):
                                      log_every_n_steps=args.logging_interval,
                                      accelerator=device)
         trainer_stage_1.fit(flow_module, event_train, val)
-        flow_module.freeze_partially()
+        # flow_module.freeze_partially()
     else:
         args.training_steps_stage_2 = args.training_steps_stage_1 + args.training_steps_stage_2
         args.learning_rate_stage_2 = args.learning_rate_stage_1

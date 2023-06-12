@@ -13,5 +13,5 @@ project_dir=.
 
 # Train on train-full with no speaker change symbols or ids
 source "$project_dir"/venv/bin/activate
-export DATAROOT='/ceph/csedu-scratch/other/tberns/safety-assessment-av/data'
+export DATAROOT='/scratch/tberns/data'
 srun python "$project_dir"/src/experiments/flow/train.py --dataset=hepmass --pretrain=False --dataset_type=weighted

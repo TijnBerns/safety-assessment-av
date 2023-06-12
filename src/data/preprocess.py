@@ -4,7 +4,6 @@ sys.path.append('src')
 import numpy as np
 from pprint import pprint
 from utils import save_json, save_np
-from config import FlowParameters
 from base import CustomDataset, split_data
 from miniboone import MiniBoone
 from power import Power
@@ -20,7 +19,7 @@ def select_variable(data):
     return xi, corr
 
 def set_threshold(data, xi):
-    p_event = FlowParameters.p_event
+    p_event = 0.08
     threshold = np.percentile(data[:, xi], 100 - (100 * p_event))
     return threshold
    
@@ -33,7 +32,7 @@ def normalize(data: np.ndarray, mu=None, std=None):
     return normalized_data, mu, std
 
 def compute_event_weight(normal, event, xi, threshold):
-    p_event = FlowParameters.p_event
+    p_event = 0.08
     n_norm = np.sum(normal[:,xi] <= threshold)
     n_event = len(event) + len(normal) - n_norm
     return ((p_event * n_norm) / (n_event)) / (1 - p_event)
@@ -47,8 +46,6 @@ def load_data(dataset):
         
     return train, val, test
     
-    
-        
     
 def save_splits(dataset: CustomDataset):
     # 1. Split data
@@ -87,7 +84,7 @@ def save_splits(dataset: CustomDataset):
     _, mu, std = normalize(all_train)
     train_all = normalize(train, mu, std)[0]
     val_all = normalize(val_copy, mu, std)[0]
-    test_all = normalize(val_copy, mu, std)[0]
+    test_all = normalize(test_copy, mu, std)[0]
     
     # 7. Save all datasplits
     # Train splits
@@ -96,7 +93,7 @@ def save_splits(dataset: CustomDataset):
     save_np(dataset.root / 'event_train.npy', train_event)
     
     # Validation splits
-    save_np(dataset.root / '_val', val_all)
+    save_np(dataset.root / '_val.npy', val_all)
     save_np(dataset.root / 'val.npy', val)
     # save_np(dataset.root / 'normal_val.npy', normal_val)
     # save_np(dataset.root / 'event_val.npy', event_val)

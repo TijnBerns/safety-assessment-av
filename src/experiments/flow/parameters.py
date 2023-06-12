@@ -2,51 +2,24 @@ import sys
 sys.path.append('src')
 
 from dataclasses import dataclass
+from data.base import CustomDataset
 from data.power import Power
 from data.miniboone import MiniBoone
 from data.gas import Gas
 from data.hepmass import Hepmass
 from data.bsds300 import BSDS300Dataset
 
-
-def get_dataset(dataset: str):
-    if dataset == 'power':
-        return Power
-    elif dataset == 'hepmass':
-        return Hepmass
-    elif dataset == 'gas':
-        return Gas
-    elif dataset =='basds300':
-        return BSDS300Dataset
-    elif dataset == 'miniboone':
-        return MiniBoone
-    else:
-        raise ValueError
-
-def get_parameters(dataset:str):
-    if dataset == 'power':
-        return PowerParamametrs
-    elif dataset == 'hepmass':
-        return HepmassParamters
-    elif dataset == 'gas':
-        return Parameters
-    elif dataset =='basds300':
-        return Parameters
-    elif dataset == 'miniboone':
-        return Parameters
-    else:
-        raise ValueError
     
 
 @dataclass
 class Parameters():
     # Num workers
-    4
+    num_workers = 2
     # The batch size
     batch_size = 512
     # The number of training steps in both training stages
-    training_steps_stage_1 = 0
-    training_steps_stage_2 = 400_000
+    training_steps_stage_1 = 25000
+    training_steps_stage_2 = 75000
     # The learning rate used during both training stages
     learning_rate_stage_1 = 0.0005
     learning_rate_stage_2 = 0.0005
@@ -76,22 +49,69 @@ class Parameters():
 
 
 @dataclass
-class PowerParamametrs(Parameters):
-    pass
-
+class PowerParameters(Parameters):
+    batch_size=512
+    num_flow_steps=10
+    num_transform_blocks = 2
+    hidden_features=256
+    num_bins=8
+    dropout_probability=0.0
+    
+@dataclass
+class GasParameters(Parameters):
+    batch_size=512
+    num_flow_steps=10
+    num_transform_blocks = 2
+    hidden_features=256
+    num_bins=8
+    dropout_probability=0.1
 
 @dataclass
-class HepmassParamters(Parameters):
+class HepmassParameters(Parameters):
     batch_size = 256
     num_flow_steps = 20
     num_transform_blocks = 1
     hidden_features = 128
+    num_bins = 8
     dropout_probability = 0.2
     
 @dataclass
-class GasParamters(Parameters):
-    batch_size=512
-    num_flow_steps=10
-    hidden_features=256
-    num_bins=8
-    dropout_probability=0.1
+class MiniBooneParameters(Parameters):
+    learning_rate_stage_1 = 0.0003
+    learning_rate_stage_1 = 0.0003
+    batch_size = 128
+    num_flow_steps = 10
+    num_transform_blocks = 1
+    hidden_features = 32
+    num_bins = 4
+    dropout_probability = 0.2
+    
+    
+
+def get_dataset(dataset: str) -> CustomDataset:
+    if dataset == 'power':
+        return Power
+    elif dataset == 'hepmass':
+        return Hepmass
+    elif dataset == 'gas':
+        return Gas
+    elif dataset =='bsds300':
+        return BSDS300Dataset
+    elif dataset == 'miniboone':
+        return MiniBoone
+    else:
+        raise ValueError
+
+def get_parameters(dataset:str) -> Parameters:
+    if dataset == 'power':
+        return PowerParameters
+    elif dataset == 'hepmass':
+        return HepmassParameters
+    elif dataset == 'gas':
+        return GasParameters
+    elif dataset =='bsds300':
+        return Parameters
+    elif dataset == 'miniboone':
+        return MiniBooneParameters
+    else:
+        raise ValueError

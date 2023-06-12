@@ -4,10 +4,10 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 import numpy as np
-from evaluate import evaluate_pdf
+from evaluate_todo import evaluate_pdf
 from config import UVParameters as uv_params
 from utils import variables_from_filename
-from evaluate import uv_evaluation_pipeline
+from evaluate_todo import uv_evaluation_pipeline
 
 
 import data.data_utils as data_utils

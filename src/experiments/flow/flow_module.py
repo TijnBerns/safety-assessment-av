@@ -78,7 +78,7 @@ class FlowModule(pl.LightningModule):
                  stage: int=1) -> None:
         super().__init__()
         self.features = features
-        self.flow = create_flow(features,args)
+        self.flow = create_flow(features, args)
         self.stage = stage
         self.batch_size = args.batch_size
         self.lr_stage_one = args.learning_rate_stage_1
@@ -145,6 +145,10 @@ class FlowModule(pl.LightningModule):
                 log_prob(self.forward(batch))
             
         return log_prob.compute()
+    
+    def sample(self, num_samples):
+        with torch.no_grad():
+            return self.flow.sample(num_samples)
     
     def freeze_partially(self):
         named_modules = list(self.flow._transform._transforms.named_children())
@@ -221,7 +225,9 @@ class FlowModuleWeighted(FlowModule):
         normal = self.forward(batch[batch[:,self.xi] <= self.threshold])
         event = self.forward(batch[batch[:,self.xi] > self.threshold])
         weighted_log_density = torch.cat((normal, self.event_weight * event))
+        
         loss = - torch.mean(weighted_log_density)
+        # loss = - (0.92 * torch.mean(normal) + 0.08 * torch.mean(event))
         self.train_mean_log_density(-loss)
         self.log("weighted_log_density", -loss, batch_size=self.batch_size)
         
