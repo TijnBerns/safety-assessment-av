@@ -127,20 +127,20 @@ def save_splits(dataset: CustomDataset):
     
 
 def main():
-    print('Preprocessing: MiniBoone')
-    save_splits(MiniBoone())
+    # print('Preprocessing: MiniBoone')
+    # save_splits(MiniBoone())
     
-    print('Preprocessing: Power')
-    save_splits(Power())
+    # print('Preprocessing: Power')
+    # save_splits(Power())
     
-    print('Preprocessing: Gas')
-    save_splits(Gas())
+    # print('Preprocessing: Gas')
+    # save_splits(Gas())
     
-    print('Preprocessing: Hepmass')
-    save_splits(Hepmass())
+    # print('Preprocessing: Hepmass')
+    # save_splits(Hepmass())
     
-    # print('preprocessing: BSDS300')
-    # save_splits(BSDS300Dataset())
+    print('preprocessing: BSDS300')
+    save_splits(BSDS300Dataset())
 
     
 if __name__ == "__main__":

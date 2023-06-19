@@ -18,8 +18,8 @@ class Parameters():
     # The batch size
     batch_size = 512
     # The number of training steps in both training stages
-    training_steps_stage_1 = 25000
-    training_steps_stage_2 = 75000
+    training_steps_stage_1 = 0
+    training_steps_stage_2 = 100000
     # The learning rate used during both training stages
     learning_rate_stage_1 = 0.0005
     learning_rate_stage_2 = 0.0005
@@ -85,8 +85,17 @@ class MiniBooneParameters(Parameters):
     hidden_features = 32
     num_bins = 4
     dropout_probability = 0.2
-    
-    
+
+@dataclass
+class BSDS300Parameters(Parameters):
+    learning_rate_stage_1 = 0.0005
+    learning_rate_stage_1 = 0.0005
+    batch_size = 512
+    num_flow_steps = 20
+    num_transform_blocks = 1
+    hidden_features = 128
+    num_bins = 8
+    dropout_probability = 0.2
 
 def get_dataset(dataset: str) -> CustomDataset:
     if dataset == 'power':
@@ -110,7 +119,7 @@ def get_parameters(dataset:str) -> Parameters:
     elif dataset == 'gas':
         return GasParameters
     elif dataset =='bsds300':
-        return Parameters
+        return BSDS300Parameters
     elif dataset == 'miniboone':
         return MiniBooneParameters
     else:

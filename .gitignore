@@ -8,6 +8,8 @@ lightning_logs
 logs/
 temp.py
 data
+results.csv
+src/experiments/flow/fine_tune.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

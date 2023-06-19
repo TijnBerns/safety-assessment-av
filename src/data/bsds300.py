@@ -17,9 +17,10 @@ class BSDS300Dataset(CustomDataset):
     def load_data(self):
         file = h5py.File(self.root / 'BSDS300.hdf5', 'r')
         return file['train'], file['validation'], file['test']
-
-    def __getitem__(self, item):
-        return self.data[item]
-
+    
+    def __getitem__(self, index):
+        return self.data[index]
+    
     def __len__(self):
-        return self.n
+        return len(self.data)
+     

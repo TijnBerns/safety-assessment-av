@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Tuple
 import click
 from torch.utils.data import DataLoader
-from flow_module import FlowModule
+from flow_module import FlowModule, FlowModuleWeighted
 import matplotlib.pyplot as plt
 import parameters
 from utils import save_json
@@ -17,22 +17,8 @@ import numpy as np
 from scipy.stats import uniform
 from typing import List
 from tqdm import tqdm
-
-
-def sample_test(dataset: str, num_samples:int = int(1e6)):
-    custom_dataset = parameters.get_dataset(dataset)
-    train = custom_dataset(split='_train')   
-
-    variable_min = np.min(train.data, axis=0)
-    variable_max = np.max(train.data, axis=0)
-    test = np.zeros((num_samples, len(variable_min)))
-    
-    for i, (vmin, vmax) in enumerate(zip(variable_min, variable_max)):
-        da = uniform(loc=vmin, scale=vmax).rvs(size=num_samples)
-        test[:,i] = da
-       
-    return test 
-        
+import data.base
+      
 
 def write_results(row: List[float]):
     """Append a row to 'results.csv'
@@ -48,23 +34,6 @@ def write_results(row: List[float]):
     df = pd.read_csv(results_file, index_col=False)
     df.loc[-1] = row
     df.to_csv(results_file, index=False)
-
-
-# def sort_fn(path: Path) -> float:
-#     """Utility function used to sort checkpoints files
-
-#     Args:
-#         path (Path): Checkpoint path
-
-#     Returns:
-#         float: Log-likelihood of saved checkpoint
-#     """
-#     s = path.name.split('.')
-#     r = s[-3]
-#     m = s[-4][-3:]
-#     if m[0] == '_':
-#         m = m[1:]
-#     return float(f'{m}.{r}')
 
 
 def get_checkpoint(version: str) -> Tuple[Path, Path]:
@@ -84,29 +53,46 @@ def get_checkpoint(version: str) -> Tuple[Path, Path]:
     return best_checkpoint, None
 
 
-def eval(checkpoint, version, dataset):
+def initialize_dataset(dataset: data.base.CustomDataset, normalize: str) -> data.base.CustomDataset:
+    if normalize == 'normal':
+        return dataset(split='test')
+
+    elif normalize == 'all':
+        return dataset(split='test')
+    else:
+        raise ValueError
+    
+
+def get_dataloaders(dataset:data.base.CustomDataset, args: parameters.Parameters) -> DataLoader:
+    threshold = dataset.threshold
+    xi = dataset.xi
+    
+    event_data = dataset.data[dataset.data[:,xi] > threshold]
+    normal_data = dataset.data[dataset.data[:,xi] <= threshold]
+    test_loader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers)
+    normal_loader = DataLoader(normal_data, batch_size=args.batch_size, num_workers=args.num_workers)
+    event_loader = DataLoader(event_data, batch_size=args.batch_size, num_workers=args.num_workers)
+    
+    return test_loader, normal_loader, event_loader        
+
+
+def eval(checkpoint, version, dataset, normalize='all'):
     # Set device
     device, _ = utils.set_device()
     
-    # Retrieve arguments correspondnig to dataset
+    # Retrieve arguments corresponding to dataset
     args = parameters.get_parameters(dataset)
-    
+       
     # Inititialize datasets
     dataset = parameters.get_dataset(dataset)
-    normal  = dataset(split='test_normal')
-    event = dataset(split='test_event')
-    test = dataset(split='test')
-    _test = dataset(split='_test')
-    features = normal.data.shape[1]
+    dataset = initialize_dataset(dataset, normalize)
+    features = dataset.data.shape[1]
     
     # Initialize dataloaders
-    normal = DataLoader(normal, batch_size=args.batch_size, num_workers=args.num_workers)
-    event = DataLoader(event, batch_size=args.batch_size, num_workers=args.num_workers)
-    test = DataLoader(test, batch_size=args.batch_size, num_workers=args.num_workers)
-    _test = DataLoader(_test, batch_size=args.batch_size, num_workers=args.num_workers)
-    
+    test, normal, event = get_dataloaders(dataset, args)
+       
     # Load model from checkpoint
-    flow_module = FlowModule.load_from_checkpoint(checkpoint, features=features, device=device, args=args, dataset=dataset()).eval()
+    flow_module = FlowModule.load_from_checkpoint(checkpoint, features=features, device=device, args=args, dataset=dataset, map_location="cpu").eval()
     flow_module = flow_module.to(device)
     
     # Print log likelihood for normal and event data
@@ -128,14 +114,14 @@ def eval(checkpoint, version, dataset):
 @click.command()
 @click.option('--version', type=str)
 @click.option('--dataset', default='hepmass')
-def main(version: str, dataset: str):
+@click.option('--normalize', default='normal', help='')
+def main(version: str, dataset: str, normalize: str):
     best, _ = get_checkpoint(version)
     
     llh_all_ls = []
     llh_normal_ls = []
     llh_event_ls = []
     for checkpoint in tqdm(best):
-        # evaluate best checkpoint
         print(f'Evaluating {version} best')
         _,  llh_all, llh_normal, llh_event = eval(checkpoint, version + ' best', dataset)
         llh_all_ls.append(llh_all)

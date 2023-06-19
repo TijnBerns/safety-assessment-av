@@ -13,9 +13,9 @@ class SharedParameters():
     seed = 2023
 
     # Path variables
-    # path_estimates = Path('/home/tberns/safety-assessment-av/estimates') # For run on cluster
-    path_estimates = Path(
-        '/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates')  # For local run
+    path_estimates = Path('/home/tberns/safety-assessment-av/estimates') # For run on cluster
+    # path_estimates = Path(
+    #     '/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates')  # For local run
 
     # Probability of observing an event
     p_event = [
@@ -82,9 +82,9 @@ class UVParameters(SharedParameters):
     # Distributions
     distributions = [
         # 'gaussian',
-        'gumbel',
-        'beta',
-        't'
+        # 'gumbel',
+        # 'beta',
+        # 't'
     ]
 
     # Other parameters
@@ -151,37 +151,3 @@ class MVParameters(SharedParameters):
         mv_distribution = scipy.stats.multivariate_normal(mean, cov)
 
         return distributions, uv_distribution, mv_distribution
-    
-# class FlowParameters(SharedParameters):
-#     batch_size = 128
-#     training_steps_stage_1 = 10000
-#     training_steps_stage_2 = 20000
-#     learning_rate_stage_1 = 3e-3
-#     learning_rate_stage_2 = 3e-3
-#     logging_interval = 50
-#     val_frac = 0.8
-#     features = 2
-    
-#     # The number of normal observations
-#     num_normal = 50000
-#     # The number of event observations
-#     num_event = 50000
-#     # The probability of observing an event in the normal data
-#     p_event = 0.08
-
-#     # Number of blocks to use in flow
-#     num_flow_steps = 5
-#     # Number of hidden features to use in coupling/autoregressive nets
-#     hidden_features = 256
-#     # Box is on [-bound, bound]^2
-#     tail_bound = 3
-#     # Number of bins to use for piecewise transforms.
-#     num_bins = 8
-#     # Number of blocks to use in coupling/autoregressive nets.
-#     num_transform_blocks = 2
-#     # Whether to use batch norm in coupling/autoregressive nets.
-#     use_batch_norm = False
-#     # Dropout probability for coupling/autoregressive nets.
-#     dropout_probability = 0.25
-#     # Whether to unconditionally transform 'identity' features in coupling layer.
-#     apply_unconditional_transform = True

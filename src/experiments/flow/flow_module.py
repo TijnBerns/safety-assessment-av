@@ -89,7 +89,8 @@ class FlowModule(pl.LightningModule):
         # For weighted training
         self.xi = dataset.xi
         self.threshold = dataset.threshold
-        self.event_weight = dataset.weight
+        # self.event_weight = dataset.weight
+        self.event_weight = 0.08/0.92
                 
         # Metrics
         self.train_mean_log_density: MeanMetric = MeanMetric()
@@ -170,7 +171,7 @@ class FlowModule(pl.LightningModule):
         # setup the optimization algorithm
         if self.stage == 1:
             optimizer = torch.optim.Adam(
-                self.flow.parameters(), lr=self.lr_stage_one)
+                self.parameters(), lr=self.lr_stage_one)
             schedule = {
                 "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
                     optimizer,
@@ -184,7 +185,7 @@ class FlowModule(pl.LightningModule):
             }
         elif self.stage == 2:
             optimizer = torch.optim.Adam(
-                self.flow.parameters(), lr=self.lr_stage_two)
+                self.parameters(), lr=self.lr_stage_two)
             # setup the learning rate schedule.
             schedule = {
                 # Required: the scheduler instance.edu
@@ -220,21 +221,45 @@ class FlowModule(pl.LightningModule):
 class FlowModuleWeighted(FlowModule):
     def __init__(self, features: int, args: Parameters, dataset:CustomDataset , stage: int = 1) -> None:
         super().__init__(features=features, args=args, dataset=dataset, stage=stage)
+        self.alpha = 100
+        # self.unconstrained_weight = torch.nn.Parameter(torch.logit(torch.tensor(self.event_weight)))
+        # self.weight_optimizer = torch.optim.Adam([self.unconstrained_weight], lr=0.05)
+        # self.weight_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.weight_optimizer, T_max=self.max_steps_stage_two // self.batch_size, eta_min=0)
+        
     
     def training_step(self, batch, batch_idx) -> torch.Tensor:
-        normal = self.forward(batch[batch[:,self.xi] <= self.threshold])
+        non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
         event = self.forward(batch[batch[:,self.xi] > self.threshold])
-        weighted_log_density = torch.cat((normal, self.event_weight * event))
+
+        # loss = - torch.mean(weighted_log_density)
+        # constrained_weight = torch.nn.functional.sigmoid(self.unconstrained_weight)
+        # regularization_term = self.alpha * (self.event_weight - constrained_weight) ** 2
+        # weighted_log_density = torch.mean(non_event) + constrained_weight * torch.mean(event)
+        # loss = - weighted_log_density + regularization_term
+        constrained_weight = self.event_weight
+        loss = - (torch.mean(non_event) + constrained_weight * torch.mean(event))
         
-        loss = - torch.mean(weighted_log_density)
-        # loss = - (0.92 * torch.mean(normal) + 0.08 * torch.mean(event))
         self.train_mean_log_density(-loss)
         self.log("weighted_log_density", -loss, batch_size=self.batch_size)
+        self.log('weight', constrained_weight)
         
-        log_density = torch.mean(torch.cat((normal, event)))
+        log_density = torch.mean(torch.cat((non_event, event)))
         self.log("log_density", log_density, batch_size=self.batch_size, prog_bar=True)
+        self.log('event', torch.mean(event))
+        self.log('non_event', torch.mean(non_event))
         return loss
+    
+    def optimizer_step(self, *args, **kwargs):
+        super().optimizer_step(*args, **kwargs)
+        # self.weight.data.clamp_(0,1)
         
+    # def on_validation_end(self) -> None:
+    #     self.weight_optimizer.step()
+    #     self.weight_scheduler.step()
+    #     return super().on_validation_end()
+    
+        
+
     
     
 

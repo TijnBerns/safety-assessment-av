@@ -21,15 +21,15 @@ class CustomDataset(Dataset):
         raise NotImplementedError
     
     def load_stats(self):
-        try:
-            stats = load_json(Path(self.root) / 'stats.json')
-            self.xi = stats['Xi']
-            self.threshold = stats['threshold']
-            self.weight = stats['weight']
+        try:   
+            self.stats = load_json(Path(self.root) / 'stats.json')
+            self.xi = self.stats['Xi']
+            self.threshold = self.stats['threshold']
+            self.weight = self.stats['weight']
         except (FileNotFoundError, KeyError):
             print('Cannot initialize stats yet, try preprocessing data first.')
             return None
-        return stats
+        return self.stats
         
     def __getitem__(self, index):
         raise self.data[index]
