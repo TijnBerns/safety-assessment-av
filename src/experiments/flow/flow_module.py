@@ -12,6 +12,7 @@ import utils
 from tqdm import tqdm
 from parameters import Parameters
 from data.base import CustomDataset
+import numpy as np
 
 def create_linear_transform(features):
     return transforms.CompositeTransform([
@@ -251,12 +252,28 @@ class FlowModuleWeighted(FlowModule):
     
     def optimizer_step(self, *args, **kwargs):
         super().optimizer_step(*args, **kwargs)
-        # self.weight.data.clamp_(0,1)
         
-    # def on_validation_end(self) -> None:
-    #     self.weight_optimizer.step()
-    #     self.weight_scheduler.step()
-    #     return super().on_validation_end()
+    
+class FlowModuleSampled(FlowModule):
+    def __init__(self, features: int, args: Parameters, dataset:CustomDataset , stage: int = 1, event_loader=None, n_event: int=100) -> None:
+        super().__init__(features=features, args=args, dataset=dataset, stage=stage)
+        self.alpha = 100
+        self.event_loader: DataLoader = event_loader
+        self.n_event = n_event       
+    
+    def on_test_epoch_start(self) -> None:
+        # Resample event data from event model
+        idx = np.random.choice(self.event_loader.dataset.data.shape[0], size=self.n_event, replace=False)
+        new_event = self.event_loader.dataset.data[idx, :]
+        
+        # Get all non event data
+        data =  self.train_dataloader().data
+        non_event = data[data[:,self.xi] <= self.threshold]
+        
+        # Update the train dataloader
+        train_loader = DataLoader(torch.cat((non_event, new_event), 0), shuffle=True, batch_size=self.batch_size)
+        self.trainer.train_dataloader = train_loader
+        return super().on_train_epoch_end()
     
         
 

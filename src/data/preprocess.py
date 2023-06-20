@@ -133,14 +133,14 @@ def main():
     # print('Preprocessing: Power')
     # save_splits(Power())
     
-    # print('Preprocessing: Gas')
-    # save_splits(Gas())
+    print('Preprocessing: Gas')
+    save_splits(Gas())
     
     # print('Preprocessing: Hepmass')
     # save_splits(Hepmass())
     
-    print('preprocessing: BSDS300')
-    save_splits(BSDS300Dataset())
+    # print('preprocessing: BSDS300')
+    # save_splits(BSDS300Dataset())
 
     
 if __name__ == "__main__":
