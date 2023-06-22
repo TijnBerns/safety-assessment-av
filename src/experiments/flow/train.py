@@ -11,7 +11,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 from data.base import CustomDataset
-
+import torch
+import random
 
 
 def create_checkpointer(prefix:str=None):
@@ -81,6 +82,9 @@ def create_module(dataset, features, dataset_type, args, stage):
 @click.option('--dataset', type=str, default='hepmass')
 @click.option('--dataset_type', type=str, default='default') #choices=['weighted','all','split', 'zero_weight']
 def train(pretrain: bool, dataset:str, dataset_type: str):    
+    # Set seeds for reproducibility 
+    utils.seed_all(2023)
+    
     # Construct data loaders
     args = parameters.get_parameters(dataset)
     dataset = parameters.get_dataset(dataset)

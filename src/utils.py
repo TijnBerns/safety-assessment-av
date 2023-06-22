@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import json
 import numpy as np
-
+import torch 
+import random
 
 # """Functions that check types."""
 # def is_bool(x):
@@ -32,6 +33,12 @@ import numpy as np
 #     else:
 #         return False
 
+
+def seed_all(seed: int):
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    
 
 def set_device() -> Tuple[str, str]:
     """Checks whether CUDA and SLURM are both avaible
@@ -96,7 +103,7 @@ def rec_dd():
 
 
 def variables_from_filename(f: str):
-    """Extracts the variables from filename
+    """Extracts the variables from filename     
 
     Args:
         f (str): The file name structures as p_edge_X.n_normal_Y.n_edge_Z
@@ -123,28 +130,3 @@ def create_alternating_binary_mask(features, even=True):
     start = 0 if even else 1
     mask[start::2] += 1
     return mask
-
-# def sum_except_batch(x, num_batch_dims=1):
-#     """Sums all elements of `x` except for the first `num_batch_dims` dimensions."""
-#     if not is_nonnegative_int(num_batch_dims):
-#         raise TypeError('Number of batch dimensions must be a non-negative integer.')
-#     reduce_dims = list(range(num_batch_dims, x.ndimension()))
-#     return torch.sum(x, dim=reduce_dims)
-
-# def tile(x, n):
-#     if not is_positive_int(n):
-#         raise TypeError('Argument \'n\' must be a positive integer.')
-#     x_ = x.reshape(-1)
-#     x_ = x_.repeat(n)
-#     x_ = x_.reshape(n, -1)
-#     x_ = x_.transpose(1, 0)
-#     x_ = x_.reshape(-1)
-#     return x_
-
-
-# def searchsorted(bin_locations, inputs, eps=1e-6):
-#     bin_locations[..., -1] += eps
-#     return torch.sum(
-#         inputs[..., None] >= bin_locations,
-#         dim=-1
-#     ) - 1

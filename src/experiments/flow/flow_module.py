@@ -2,7 +2,7 @@ from typing import Any
 import pytorch_lightning as pl
 # from nde.flows.base import Flow
 import torch
-from torchmetrics import MeanMetric
+from torchmetrics import MeanMetric, MeanSquaredError
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from nflows import flows, distributions, transforms
@@ -13,6 +13,8 @@ from tqdm import tqdm
 from parameters import Parameters
 from data.base import CustomDataset
 import numpy as np
+from typing import Any, List, Tuple
+
 
 def create_linear_transform(features):
     return transforms.CompositeTransform([
@@ -55,21 +57,6 @@ def create_flow(features: int, args: Parameters):
     flow_distribution = distributions.StandardNormal((features,))
     transform = create_transform(features, args)
     return flows.Flow(transform, flow_distribution)
-
-# def create_flow(features):
-#     num_layers = 5
-#     base_dist = distributions.StandardNormal((features,))
-
-#     transform = []
-#     for _ in range(num_layers):
-#         transform.append(transforms.ReversePermutation(features=features))
-#         transform.append(transforms.MaskedAffineAutoregressiveTransform(features=features, 
-#                                                             hidden_features=4, 
-#                                                             context_features=0))
-#     transform = transforms.CompositeTransform(transform)
-
-#     flow = flows.Flow(transform, base_dist)
-#     return flow
 
 class FlowModule(pl.LightningModule):
     def __init__(self,  
@@ -144,31 +131,57 @@ class FlowModule(pl.LightningModule):
         with torch.no_grad():
             for batch in tqdm(dataloader):
                 batch = batch.to(self.device)
-                log_prob(self.forward(batch))
+                log_prob.update(self.forward(batch))
             
         return log_prob.compute()
     
-    def sample(self, num_samples):
+    def compute_mse(self, other: 'FlowModule', dataloader: DataLoader):
+        """Computes the mean squared error (MSE) of this module and another flow module.
+
+        Args:
+            other (FlowModule):The flow module used as a comparison.
+            dataloader (DataLoader): Dataloader used for computations.
+
+        Returns:
+            float: MSE between this flow module and other.
+        """
+        mse = MeanSquaredError().to(self.device)
+        with torch.no_grad():
+            for batch in tqdm(dataloader):
+                batch = batch.to(self.device)
+                target = self.forward(batch)
+                inputs = other.forward(batch)
+                mse.update(inputs, target)
+        return mse.compute()
+    
+    def sample(self, num_samples: int) -> torch.Tensor:
+        """Sample from the flow network.
+
+        Args:
+            num_samples (int): Number of samples to draw.
+
+        Returns:
+            torch.Tensor: Tensor of samples drawn from flow network.
+        """
         with torch.no_grad():
             return self.flow.sample(num_samples)
-    
+        
     def freeze_partially(self):
+        """Freezes half of the flow layers.
+        """
         named_modules = list(self.flow._transform._transforms.named_children())
         for i in range(len(named_modules) // 2):
             named_modules[i][1].requires_grad_(False)
-        # for test in 
-        #     breakpoint()
-        # self.flow._transform.requires_grad_(False)
-        # transform = transforms.CompositeTransform([
-        #     transforms.CompositeTransform([
-        #         create_linear_transform(self.features),
-        #         create_base_transform(self.features, i)
-        #     ]) for i in range(args.num_flow_steps)
-        # ])
-        # self.flow._transform.add_module("test", transform)
-       
         
-    def configure_optimizers(self) -> None:
+    def configure_optimizers(self) -> Tuple[List[Any], List[Any]]:
+        """Initializes the optimizer and learning rate scheduler.
+
+        Raises:
+            ValueError: Raises error if the stage of the module is not set to 1 or 2.
+
+        Returns:
+            _type_: _description_
+        """
         # setup the optimization algorithm
         if self.stage == 1:
             optimizer = torch.optim.Adam(
@@ -187,25 +200,14 @@ class FlowModule(pl.LightningModule):
         elif self.stage == 2:
             optimizer = torch.optim.Adam(
                 self.parameters(), lr=self.lr_stage_two)
-            # setup the learning rate schedule.
             schedule = {
-                # Required: the scheduler instance.edu
                 "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
                     optimizer,
                     T_max=self.max_steps_stage_two,
                     eta_min=0),
-                # The unit of the scheduler's step size, could also be 'step'.
-                # 'epoch' updates the scheduler on epoch end whereas 'step'
-                # updates it after an optimizer update.    # def _extract_embeddings_batch(self, hidden_states: torch.Tensor, processed_logits: torch.Tensor):
                 "interval": "step",
-                # How many epochs/steps should pass between calls to
-                # `scheduler.step()`. 1 corresponds to updating the learning
-                # rate after every epoch/step.
                 "frequency": 1,
                 "monitor": "val_log_density",
-                # If using the `LearningRateMonitor` callback to monitor the
-                # learning rate progress, this keyword can be used to specify
-                # a custom logged nameself.stage = stage
                 "name": "lr",
             }
         else:

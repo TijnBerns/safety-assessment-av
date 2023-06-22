@@ -85,6 +85,11 @@ def train(pretrain: bool, dataset:str, dataset_type: str):
     args = parameters.get_parameters(dataset)
     dataset = parameters.get_dataset(dataset)
     normal_train, event_train, val = create_data_loaders(dataset, args.batch_size, dataset_type)
+    event_data = event_train.dataset.data
+    xi = dataset().xi
+    threshold = dataset().threshold
+    event_from_normal = normal_train.dataset.data[normal_train.dataset.data[:, xi] > threshold]
+    event_train = DataLoader(np.concatenate((event_data, event_from_normal)), shuffle=True, batch_size=args.batch_size, num_workers=args.num_workers)
     
     # Get device
     device, _ = utils.set_device()
