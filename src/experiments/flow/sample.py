@@ -8,7 +8,7 @@ from flow_module import FlowModule
 from utils import set_device
 from scipy.stats import uniform
 import torch
-from utils import save_np
+import utils
 import numpy as np
 from typing import Tuple, List
 from pathlib import Path
@@ -30,14 +30,15 @@ def sample(dataset:str, version: str, num_samples: int) -> Tuple[np.ndarray, np.
     Returns:
         Tuple[np.ndarray, np.ndarray]: _description_
     """
-
+    num_samples = None
     # Set device dataset and parameters for given dataset
+    utils.seed_all(2023)
     device, _ = set_device()
     args = parameters.get_parameters(dataset)
     dataset: CustomDataset = parameters.get_dataset(dataset)(split='_train')
     
     # Get dataset stats
-    threshold = dataset.threshold
+    threshold = dataset._threshold
     xi = dataset.xi
     features = dataset.data.shape[1]
     
@@ -47,14 +48,20 @@ def sample(dataset:str, version: str, num_samples: int) -> Tuple[np.ndarray, np.
     flow_module = FlowModule.load_from_checkpoint(best, features=features, device=device, args=args, dataset=dataset, map_location=torch.device('cpu')).eval()
     # flow_module = flow_module.to(device)
    
+    if num_samples is None:
+        num_normal_samples =  dataset.stats['normal_train.npy']
+        num_event_samples = dataset.stats['event_train.npy']
+    else:
+        num_normal_samples = num_event_samples = dataset.stats['normal_train.npy']
+        
     # Generate normal train data
-    print(f"Generating {num_samples} normal train and validation data") 
-    normal = sample_normal(flow_module, dataset.stats['normal_train.npy'], save=dataset.root / 'normal_sampled.npy')
+    print(f"Generating {num_normal_samples} normal train and validation data") 
+    normal = sample_normal(flow_module, num_normal_samples, save=dataset.root / 'normal_sampled.npy')
     val = sample_normal(flow_module, dataset.stats['val.npy'], save=dataset.root / 'val_sampled.npy')
 
     # Generate event train data
-    print(f"Generating {num_samples} event train data")
-    event = sample_event(flow_module, dataset.stats['event_train.npy'], threshold, xi, save=dataset.root / 'event_sampled.npy')
+    print(f"Generating {num_event_samples} event train data")
+    event = sample_event(flow_module, num_event_samples, threshold, xi, save=dataset.root / 'event_sampled.npy')
     
     # Generate test data
     print(f"Generating {200_000} test samples")

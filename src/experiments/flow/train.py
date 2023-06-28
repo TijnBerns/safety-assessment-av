@@ -1,5 +1,6 @@
 import sys
 sys.path.append('src')
+sys.path.append('src/data')
 
 import utils
 import parameters
@@ -11,9 +12,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 from data.base import CustomDataset
-import torch
-import random
-
+import data.preprocess
+import evaluate
 
 def create_checkpointer(prefix:str=None):
     if prefix is None:
@@ -70,20 +70,22 @@ def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str)
     else: 
         raise ValueError
 
-def create_module(dataset, features, dataset_type, args, stage):
+def create_module(dataset: CustomDataset, features: int, dataset_type: str, weight:float, args: parameters.Parameters, stage: int):
     if dataset_type in ['weighted', 'sampled_weighted']:
-        return FlowModuleWeighted(features=features, dataset=dataset, args=args, stage=stage)
+        return FlowModuleWeighted(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
     else:
-        return FlowModule(features=features, dataset=dataset, args=args, stage=stage)
-    
+        return FlowModule(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
+   
+
 
 @click.command()
 @click.option('--pretrain', type=bool, default=True)
 @click.option('--dataset', type=str, default='hepmass')
-@click.option('--dataset_type', type=str, default='default') #choices=['weighted','all','split', 'zero_weight']
+@click.option('--dataset_type', type=str, default='default') 
 def train(pretrain: bool, dataset:str, dataset_type: str):    
     # Set seeds for reproducibility 
     utils.seed_all(2023)
+    dataset_str = dataset
     
     # Construct data loaders
     args = parameters.get_parameters(dataset)
@@ -91,11 +93,17 @@ def train(pretrain: bool, dataset:str, dataset_type: str):
     normal_train, event_train, val = create_data_loaders(dataset, args.batch_size, dataset_type)
     
     # Get device
-    device, _ = utils.set_device()
+    device, version = utils.set_device()
     
     # create model
+    if 'weighted' in dataset_type:
+        weight = data.preprocess.compute_event_weight_np(data=normal_train.dataset, xi=dataset().xi, threshold=dataset().threshold)
+    else:
+        weight = None
+    print(f'Dataset: {weight}')
+        
     features = normal_train.dataset.data.shape[1]
-    flow_module = create_module(features=features, dataset=dataset(), dataset_type=dataset_type, args=args, stage=1)
+    flow_module = create_module(features=features, dataset=dataset(), dataset_type=dataset_type, args=args, stage=1, weight=weight)
 
     # Initialize checkpointers
     checkpointer = create_checkpointer()
@@ -123,6 +131,10 @@ def train(pretrain: bool, dataset:str, dataset_type: str):
                                  accelerator=device)
     flow_module.set_stage(2)
     trainer_stage_2.fit(flow_module, normal_train, val)
+    
+    # Evaluate models (computes log likelihood tensor)
+    test_set = 'all' if 'sampled' in dataset_type else 'normal'     
+    evaluate.evaluate(dataset=dataset_str, version=version, test_set=test_set)
 
 
 if __name__ == "__main__":

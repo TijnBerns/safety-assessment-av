@@ -28,7 +28,7 @@ matplotlib.rcParams["text.usetex"] = True
 matplotlib.rcParams["font.family"] = "serif"
 matplotlib.rcParams["font.size"] = "8"
 
-import pygeos 
+
 
 FIGSIZE = (6.6, 4.0)
 labels = {

@@ -1,3 +1,4 @@
+
 from typing import Any
 import pytorch_lightning as pl
 # from nde.flows.base import Flow
@@ -63,7 +64,8 @@ class FlowModule(pl.LightningModule):
                  features: int,
                  dataset: CustomDataset,
                  args: Parameters, 
-                 stage: int=1) -> None:
+                 stage: int=1,
+                 weight=None) -> None:
         super().__init__()
         self.features = features
         self.flow = create_flow(features, args)
@@ -78,7 +80,7 @@ class FlowModule(pl.LightningModule):
         self.xi = dataset.xi
         self.threshold = dataset.threshold
         # self.event_weight = dataset.weight
-        self.event_weight = 0.08/0.92
+        self.event_weight = weight
                 
         # Metrics
         self.train_mean_log_density: MeanMetric = MeanMetric()
@@ -119,6 +121,17 @@ class FlowModule(pl.LightningModule):
     def on_test_epoch_end(self) -> None:
         self.log("test_log_density", self.test_mean_log_density)
         return
+    
+    def compute_llh(self, dataloader: DataLoader):
+        llh = torch.zeros(len(dataloader.dataset.data))
+        with torch.no_grad():
+            i = 0
+            for batch in tqdm(dataloader):
+                batch  = batch.to(self.device)
+                llh[i:i + len(batch)] = self.forward(batch).to('cpu')
+                i += len(batch)
+        return llh
+                
     
     def compute_pdf(self, x_values: torch.Tensor):
         with torch.no_grad():
@@ -210,6 +223,10 @@ class FlowModule(pl.LightningModule):
                 "monitor": "val_log_density",
                 "name": "lr",
             }
+        elif self.stage == 3:
+            optimizer = torch.optim.Adam(
+                self.parameters(), lr=self.lr_stage_two)
+            return [optimizer]
         else:
             raise ValueError
  
@@ -222,8 +239,13 @@ class FlowModule(pl.LightningModule):
         
         
 class FlowModuleWeighted(FlowModule):
-    def __init__(self, features: int, args: Parameters, dataset:CustomDataset , stage: int = 1) -> None:
-        super().__init__(features=features, args=args, dataset=dataset, stage=stage)
+    def __init__(self,  
+                 features: int,
+                 dataset: CustomDataset,
+                 args: Parameters, 
+                 stage: int=1,
+                 weight=None) -> None:
+        super().__init__(features=features, args=args, dataset=dataset, stage=stage, weight=weight)
         self.alpha = 100
         # self.unconstrained_weight = torch.nn.Parameter(torch.logit(torch.tensor(self.event_weight)))
         # self.weight_optimizer = torch.optim.Adam([self.unconstrained_weight], lr=0.05)

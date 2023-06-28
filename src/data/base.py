@@ -25,6 +25,7 @@ class CustomDataset(Dataset):
             self.stats = load_json(Path(self.root) / 'stats.json')
             self.xi = self.stats['Xi']
             self.threshold = self.stats['threshold']
+            self._threshold = self.stats['_threshold']
             self.weight = self.stats['weight']
         except (FileNotFoundError, KeyError):
             print('Cannot initialize stats yet, try preprocessing data first.')

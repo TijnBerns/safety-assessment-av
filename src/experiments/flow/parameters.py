@@ -109,6 +109,7 @@ def get_dataset(dataset: str) -> CustomDataset:
     elif dataset == 'miniboone':
         return MiniBoone
     else:
+        print(f'Got unexpected dataset string: {dataset}')
         raise ValueError
 
 def get_parameters(dataset:str) -> Parameters:
@@ -123,4 +124,5 @@ def get_parameters(dataset:str) -> Parameters:
     elif dataset == 'miniboone':
         return MiniBooneParameters
     else:
+        print(f'Got unexpected dataset string: \'{dataset}\'')
         raise ValueError

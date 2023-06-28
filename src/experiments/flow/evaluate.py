@@ -63,22 +63,6 @@ def sample_event(flow_module: FlowModule, num_samples: int, threshold:float, xi:
     
     return sampled_data
 
-def write_results(path: Union[str, Path], row: List[float]):
-    """Append a row to a csv file specified by the given path.
-
-    Args:
-        path (Union[str, Path]): Path to csv file.
-        row (List[float]): Row of length three, containing log-likelihood values.
-    """
-    results_file = Path(path)
-    if not results_file.exists():
-        results_file.touch()
-        with open(results_file, 'w') as f:
-            f.write('version, all, all_std, normal, normal_std, event, event_std')
-    df = pd.read_csv(results_file, index_col=False)
-    df.loc[-1] = row
-    df.to_csv(results_file, index=False)
-
 
 def get_checkpoint(version: str) -> Tuple[List[Path], None]:
     """Loads the checkpoints of a given version
@@ -113,7 +97,7 @@ def get_best_checkpoint(checkpoints: List[Path]):
 
 
 class Evaluator():
-    def __init__(self, dataset: str, version: str, test_set: str) -> None:
+    def __init__(self, dataset: str, version: str, test_set: str='all') -> None:
         # Set device
         device, _ = utils.set_device()
         self.device = device
@@ -121,7 +105,6 @@ class Evaluator():
         # Retrieve arguments corresponding to dataset
         self.args = parameters.get_parameters(dataset)
   
-        
         # Initialize dataset
         self._initialize_dataset(dataset, test_set)
         self.features = self.dataset.data.shape[1]
@@ -139,97 +122,108 @@ class Evaluator():
         elif test_set == 'sampled':
             self.dataset = dataset(split='test_sampled')
         else:
+            print(f'Got unexpected argument for test_set: {dataset}')
             raise ValueError
         
     def _initialize_dataloaders(self, dataset:data.base.CustomDataset, args: parameters.Parameters) -> DataLoader:
-        threshold = dataset.threshold
-        xi = dataset.xi
+        self.threshold = dataset._threshold
+        self.xi = dataset.xi
         
-        event_data = dataset.data[dataset.data[:,xi] > threshold]
-        normal_data = dataset.data[dataset.data[:,xi] <= threshold]
+        event_data = dataset.data[dataset.data[:,self.xi] > self.threshold]
+        normal_data = dataset.data[dataset.data[:,self.xi] <= self.threshold]
         self.test = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
         self.normal = DataLoader(normal_data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
         self.event = DataLoader(event_data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
     
-    def _load_checkpoint(self, checkpoint):
+    def _load_checkpoint(self, checkpoint: Path) -> FlowModule:
         # Load model from checkpoint
         flow_module = FlowModule.load_from_checkpoint(checkpoint, features=self.features, 
                                                       device=self.device, args=self.args, 
                                                       dataset=self.dataset, map_location="cpu").eval()
         return flow_module.to(self.device)
+    
+    def _likelihood_ratio(self, true, other):
+        return 2 * float(torch.mean(other - true))
+    
+    def _mse(self, true, other):
+        return float(torch.mean(torch.square(true - other)))
 
-    def evaluate(self, checkpoint):
+    def _split_llh(self, llh):
+        llh_all = llh
+        llh_non_event = llh[self.test.dataset[:,self.xi] <= self.threshold]
+        llh_event = llh[self.test.dataset[:,self.xi] > self.threshold]
+        return llh_all, llh_non_event, llh_event
+    
+    def compute_llh_tensor(self, checkpoint: Path) -> torch.Tensor:
+        # Load flow module from checkpoint
         flow_module = self._load_checkpoint(checkpoint)
+        llh = flow_module.compute_llh(self.test)
         
-        llh_all = float(flow_module.compute_log_prob(self.test))
-        print(f'log likelihood all {llh_all}')
+        # Save log-likelihood tensor
+        torch.save(llh, Path(checkpoint).parent / (checkpoint.name[:-4] + "llh.pt"))
+
+        # Split in all, non-event, and event
+        llh_all, llh_non_event, llh_event = self._split_llh(llh)
         
-        llh_normal = float(flow_module.compute_log_prob(self.normal))
-        print(f'log likelihood normal {llh_normal}')
+        # Return mean log-likelihood on non-event and event data
+        return torch.mean(llh_all), torch.mean(llh_non_event), torch.mean(llh_event)
+    
+    def compute_llh(self, checkpoint: Path):
+        # Load likelihood tensors
+        llh_estimate = torch.load(checkpoint.parent / (checkpoint.name[:-4] + "llh.pt"))
         
-        llh_event = float(flow_module.compute_log_prob(self.event))
-        print(f'log likelihood event {llh_event}')   
+        # Split in all, non-event, and event
+        all, non_event, event = self._split_llh(llh_estimate)
+        return float(torch.mean(all).item()), float(torch.mean(non_event).item()), float(torch.mean(event).item())
         
-        return llh_all, llh_normal, llh_event
+    def compute_lr(self, true: Path, checkpoint: Path) -> Tuple[float, float]: 
+        # Load likelihood tensors
+        llh_estimate = torch.load(checkpoint.parent / (checkpoint.name[:-4] + "llh.pt"))
+        llh_true = torch.load(true.parent / (true.name[:-4] + "llh.pt"))
+        
+        # Split in all, non-event, and event
+        all_estimate, non_event_estimate, event_estimate = self._split_llh(llh_estimate)
+        all_true, non_event_true, event_true = self._split_llh(llh_true)
+        
+        # Compute llh-ratios
+        ratio_all = self._likelihood_ratio(all_true, all_estimate)
+        ratio_event = self._likelihood_ratio(event_true, event_estimate)
+        ratio_non_event = self._likelihood_ratio(non_event_true, non_event_estimate)
+        return ratio_all, ratio_non_event, ratio_event
     
     
-    def evaluate_sampled(self, checkpoint, true):
-        flow_module = self._load_checkpoint(checkpoint)
-        true = self._load_checkpoint(true) 
+    def compute_mse(self, true: Path, checkpoint: Path) -> Tuple[float, float]: 
+        # Load likelihood tensors
+        llh_estimate = torch.load(checkpoint.parent / (checkpoint.name[:-4] + "llh.pt"))
+        llh_true = torch.load(true.parent / (true.name[:-4] + "llh.pt"))
         
-        mse_all = float(flow_module.compute_mse(true, self.test))
-        print(f'MSE all {mse_all}')
+        # Split in all, non-event, and event
+        all_estimate, non_event_estimate, event_estimate = self._split_llh(llh_estimate)
+        all_true, non_event_true, event_true = self._split_llh(llh_true)
         
-        mse_normal = float(flow_module.compute_mse(true, self.normal))
-        print(f'MSE normal {mse_normal}')
-        
-        mse_event = float(flow_module.compute_mse(true, self.event))
-        print(f'MSE event {mse_event}')   
-        
-        return mse_all, mse_normal, mse_event
-        
-        
+        # Compute llh-ratios
+        mse_all = self._mse(all_true, all_estimate)
+        mse_non_event = self._mse(non_event_true, non_event_estimate)
+        mse_event = self._mse(event_true, event_estimate)
+        return mse_all, mse_non_event, mse_event
+    
+    
+def evaluate(version: str, dataset:str, test_set: str):
+    utils.seed_all(2023)
+    evaluator = Evaluator(dataset=dataset, version=version, test_set=test_set)
+    best, _ = get_checkpoint(version)
+
+    for checkpoint in tqdm(best):
+        print(f'Evaluating {checkpoint}')
+        evaluator.compute_llh_tensor(checkpoint)
+
+
 @click.command()
 @click.option('--version', type=str)
 @click.option('--dataset', default='hepmass')
-@click.option('--test_set', default='normal', help='Whether to evaluate on test data normalized using all data or normal data only. Choices: [normal, all]')
-@click.option('--true_model', type=str, default=None)
-def main(version: str, dataset: str, test_set: str, true_model: str):
-    utils.seed_all(2023)
-    evaluator = Evaluator(dataset=dataset, version=version, test_set=test_set)
-    
-    best, _ = get_checkpoint(version)
-    if test_set == 'sampled':
-        true_model, _ = get_checkpoint(true_model)    
-        true_model = get_best_checkpoint(true_model)
-    
-    all_ls = []
-    normal_ls = []
-    event_ls = []
-    for checkpoint in tqdm(best):
-        print(f'Evaluating {checkpoint}')
-        if test_set != 'sampled':
-            all, normal, event = evaluator.evaluate(checkpoint) 
-        else: 
-            all, normal, event = evaluator.evaluate_sampled(checkpoint, true_model)
-        all_ls.append(all)
-        normal_ls.append(normal)
-        event_ls.append(event)
-        
-    row = [
-        version, 
-        np.mean(all_ls),
-        np.std(all_ls),
-        np.mean(normal_ls),
-        np.std(normal_ls),
-        np.mean(event_ls),
-        np.std(event_ls)
-    ]
-    
-    if test_set == 'sampled':
-        write_results(path='results_sampled.csv', row=row)
-    else: 
-        write_results(path='results.csv', row=row)
+@click.option('--test_set', default='all', help='Whether to evaluate on test data normalized using all data or normal data only. Choices: [normal, all]')
+def main(version: str, dataset: str, test_set: str):
+    evaluate(version=version,dataset=dataset, test_set=test_set)
 
            
 

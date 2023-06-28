@@ -2,7 +2,6 @@ import sys
 sys.path.append('src')
 
 import numpy as np
-from pprint import pprint
 from utils import save_json, save_np
 from base import CustomDataset, split_data
 from miniboone import MiniBoone
@@ -10,8 +9,6 @@ from power import Power
 from gas import Gas
 from hepmass import Hepmass
 from bsds300 import BSDS300Dataset
-
-import click
 
 def select_variable(data):
     corr = np.abs(np.corrcoef(data.T))
@@ -37,6 +34,12 @@ def compute_event_weight(normal, event, xi, threshold):
     n_event = len(event) + len(normal) - n_norm
     return ((p_event * n_norm) / (n_event)) / (1 - p_event)
 
+def compute_event_weight_np(data, xi, threshold):
+    p_event = 0.08
+    non_event = np.sum(data[:,xi] <= threshold)
+    event = np.sum(data[:,xi] > threshold)
+    return ((p_event * non_event) / (event)) / (1 - p_event)
+
 def load_data(dataset):
     if type(dataset) == BSDS300Dataset:
         train, val, test = dataset.load_data() 
@@ -60,14 +63,14 @@ def save_splits(dataset: CustomDataset):
     xi, corr = select_variable(all_data)
 
     # 3. Set the threshold for p_event
-    threshold = set_threshold(all_data, xi)
+    threshold_unnormalized = set_threshold(all_data, xi)
     
     # 4. Split train data into normal and event
     # TODO: Check what fraction we want to use here
     train_normal, train_event = split_data(train, frac=0.2)
-    train_event = train_event[train_event[:, xi] > threshold]
-    test_normal = test[test[:, xi] <= threshold]
-    test_event = test[test[:, xi] > threshold]
+    train_event = train_event[train_event[:, xi] > threshold_unnormalized]
+    test_normal = test[test[:, xi] <= threshold_unnormalized]
+    test_event = test[test[:, xi] > threshold_unnormalized]
     save_np(dataset.root / 'normal_train_unnormalized.npy', train_normal)
     save_np(dataset.root / 'event_train_unnormalized.npy', train_event)
 
@@ -78,13 +81,14 @@ def save_splits(dataset: CustomDataset):
     test = normalize(test, mu, std)[0]
     test_normal = normalize(test_normal, mu, std)[0]
     test_event = normalize(test_event, mu, std)[0]
-    threshold = (threshold - mu[xi]) / std[xi]
+    threshold = (threshold_unnormalized - mu[xi]) / std[xi]
     
     # To reproduce results in normal spline flow paper also store entire train set
     _, mu, std = normalize(all_train)
     train_all = normalize(train, mu, std)[0]
     val_all = normalize(val_copy, mu, std)[0]
     test_all = normalize(test_copy, mu, std)[0]
+    _threshold = (threshold_unnormalized - mu[xi]) / std[xi]
     
     # 7. Save all datasplits
     # Train splits
@@ -121,23 +125,24 @@ def save_splits(dataset: CustomDataset):
         'Xi': int(xi), 
         'corr': np.max(np.mean(corr, axis=0)), 
         'threshold': threshold,
-        'weight': compute_event_weight(train_normal, train_event, xi, threshold)
+        '_threshold': _threshold,
+        'weight': compute_event_weight(train_normal, train_event, xi, threshold_unnormalized)
     }
     save_json(dataset.root / 'stats.json', stats)
     
 
 def main():
-    # print('Preprocessing: MiniBoone')
-    # save_splits(MiniBoone())
+    print('Preprocessing: MiniBoone')
+    save_splits(MiniBoone())
     
-    # print('Preprocessing: Power')
-    # save_splits(Power())
+    print('Preprocessing: Power')
+    save_splits(Power())
     
     print('Preprocessing: Gas')
     save_splits(Gas())
     
-    # print('Preprocessing: Hepmass')
-    # save_splits(Hepmass())
+    print('Preprocessing: Hepmass')
+    save_splits(Hepmass())
     
     # print('preprocessing: BSDS300')
     # save_splits(BSDS300Dataset())
