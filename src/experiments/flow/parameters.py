@@ -18,11 +18,9 @@ class Parameters():
     # The batch size
     batch_size = 512
     # The number of training steps in both training stages
-    training_steps_stage_1 = 0
-    training_steps_stage_2 = 100000
+    training_steps = 100000
     # The learning rate used during both training stages
-    learning_rate_stage_1 = 0.0005
-    learning_rate_stage_2 = 0.0005
+    learning_rate = 0.0005
     # The probability of observing an event in the normal data
     p_event = 0.08
     # Number of blocks to use in flowsa

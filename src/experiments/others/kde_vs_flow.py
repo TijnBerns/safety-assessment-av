@@ -134,7 +134,7 @@ if __name__ =='__main__':
                 dataloader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
                 trainer = pl.Trainer(max_steps=args.training_steps_stage_2,
                                      inference_mode=False,
-                                     callbacks=[EarlyStopping(monitor="log_density", mode="max",  min_delta=0.01, patience=3,)],
+                                     callbacks=[EarlyStopping(monitor="log_density", mode="max",  min_delta=0.00, patience=3,)],
                                      enable_checkpointing=False,
                                      log_every_n_steps=args.logging_interval,
                                      accelerator=device)

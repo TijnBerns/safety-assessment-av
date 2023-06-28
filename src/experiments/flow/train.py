@@ -10,6 +10,8 @@ import click
 import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+
 from torch.utils.data import DataLoader
 from data.base import CustomDataset
 import data.preprocess
@@ -79,10 +81,10 @@ def create_module(dataset: CustomDataset, features: int, dataset_type: str, weig
 
 
 @click.command()
-@click.option('--pretrain', type=bool, default=True)
-@click.option('--dataset', type=str, default='hepmass')
-@click.option('--dataset_type', type=str, default='default') 
-def train(pretrain: bool, dataset:str, dataset_type: str):    
+@click.option('--dataset', type=str, default='gas')
+@click.option('--dataset_type', type=str, default='sampled_weighted') 
+@click.option('--weight', type=float, default=None) 
+def train(dataset:str, dataset_type: str, weight: float):    
     # Set seeds for reproducibility 
     utils.seed_all(2023)
     dataset_str = dataset
@@ -90,17 +92,14 @@ def train(pretrain: bool, dataset:str, dataset_type: str):
     # Construct data loaders
     args = parameters.get_parameters(dataset)
     dataset = parameters.get_dataset(dataset)
-    normal_train, event_train, val = create_data_loaders(dataset, args.batch_size, dataset_type)
+    normal_train, _, val = create_data_loaders(dataset, args.batch_size, dataset_type)
     
     # Get device
     device, version = utils.set_device()
     
     # create model
-    if 'weighted' in dataset_type:
+    if weight is None:
         weight = data.preprocess.compute_event_weight_np(data=normal_train.dataset, xi=dataset().xi, threshold=dataset().threshold)
-    else:
-        weight = None
-    print(f'Dataset: {weight}')
         
     features = normal_train.dataset.data.shape[1]
     flow_module = create_module(features=features, dataset=dataset(), dataset_type=dataset_type, args=args, stage=1, weight=weight)
@@ -108,29 +107,14 @@ def train(pretrain: bool, dataset:str, dataset_type: str):
     # Initialize checkpointers
     checkpointer = create_checkpointer()
 
-    if pretrain:
-        # Pre-train on event data
-        trainer_stage_1 = pl.Trainer(max_steps=args.training_steps_stage_1,
-                                     inference_mode=False,
-                                     enable_checkpointing=False,
-                                     log_every_n_steps=args.logging_interval,
-                                     accelerator=device)
-        trainer_stage_1.fit(flow_module, event_train, val)
-        # flow_module.freeze_partially()
-    else:
-        args.training_steps_stage_2 = args.training_steps_stage_1 + args.training_steps_stage_2
-        args.learning_rate_stage_2 = args.learning_rate_stage_1
-        flow_module.max_steps_stage_two = args.training_steps_stage_2
-        flow_module.lr_stage_two = args.learning_rate_stage_2
-
     # Fine-tune on normal data
-    trainer_stage_2 = pl.Trainer(max_steps=args.training_steps_stage_2,
+    trainer = pl.Trainer(max_steps=args.training_steps,
                                  inference_mode=False,
-                                 callbacks=[checkpointer],
+                                 callbacks=[checkpointer,
+                                            EarlyStopping(monitor="val_log_density", mode="max",  min_delta=0.00, patience=3,)],
                                  log_every_n_steps=args.logging_interval,
                                  accelerator=device)
-    flow_module.set_stage(2)
-    trainer_stage_2.fit(flow_module, normal_train, val)
+    trainer.fit(flow_module, normal_train, val)
     
     # Evaluate models (computes log likelihood tensor)
     test_set = 'all' if 'sampled' in dataset_type else 'normal'     

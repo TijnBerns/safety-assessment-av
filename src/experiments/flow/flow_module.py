@@ -71,10 +71,8 @@ class FlowModule(pl.LightningModule):
         self.flow = create_flow(features, args)
         self.stage = stage
         self.batch_size = args.batch_size
-        self.lr_stage_one = args.learning_rate_stage_1
-        self.lr_stage_two = args.learning_rate_stage_2
-        self.max_steps_stage_one = args.training_steps_stage_1
-        self.max_steps_stage_two = args.training_steps_stage_2
+        self.lr = args.learning_rate
+        self.max_steps = args.training_steps
         
         # For weighted training
         self.xi = dataset.xi
@@ -198,11 +196,11 @@ class FlowModule(pl.LightningModule):
         # setup the optimization algorithm
         if self.stage == 1:
             optimizer = torch.optim.Adam(
-                self.parameters(), lr=self.lr_stage_one)
+                self.parameters(), lr=self.lr)
             schedule = {
                 "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
                     optimizer,
-                    T_max=self.max_steps_stage_one,
+                    T_max=self.max_steps,
                     eta_min=0),
                 "interval": "step",
                 "frequency": 1,
@@ -210,32 +208,15 @@ class FlowModule(pl.LightningModule):
                 "strict": True,
                 "name": None,
             }
+            return [optimizer], [schedule]
         elif self.stage == 2:
             optimizer = torch.optim.Adam(
-                self.parameters(), lr=self.lr_stage_two)
-            schedule = {
-                "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
-                    optimizer,
-                    T_max=self.max_steps_stage_two,
-                    eta_min=0),
-                "interval": "step",
-                "frequency": 1,
-                "monitor": "val_log_density",
-                "name": "lr",
-            }
-        elif self.stage == 3:
-            optimizer = torch.optim.Adam(
-                self.parameters(), lr=self.lr_stage_two)
+                self.parameters(), lr=self.lr)
             return [optimizer]
         else:
             raise ValueError
  
-        return [optimizer], [schedule]
-    
-    def set_stage(self, stage):
-        assert stage <= 2 and stage > 0, f"The stage of the model must be either 1 or 2 but got {stage}"
-        self.stage = stage
-        self.configure_optimizers()
+
         
         
 class FlowModuleWeighted(FlowModule):

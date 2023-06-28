@@ -113,9 +113,9 @@ def train(pretrain: bool, dataset:str, dataset_type: str):
         # flow_module.freeze_partially()
     else:
         args.training_steps_stage_2 = args.training_steps_stage_1 + args.training_steps_stage_2
-        args.learning_rate_stage_2 = args.learning_rate_stage_1
+        args.learning_rate = args.learning_rate_stage_1
         flow_module.max_steps_stage_two = args.training_steps_stage_2
-        flow_module.lr_stage_two = args.learning_rate_stage_2
+        flow_module.lr_stage_two = args.learning_rate
 
     # Fine-tune on normal data
     trainer_stage_2 = pl.Trainer(max_steps=args.training_steps_stage_2,
