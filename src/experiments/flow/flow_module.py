@@ -76,7 +76,7 @@ class FlowModule(pl.LightningModule):
         
         # For weighted training
         self.xi = dataset.xi
-        self.threshold = dataset.threshold
+        self.threshold = dataset._threshold
         # self.event_weight = dataset.weight
         self.event_weight = weight
                 

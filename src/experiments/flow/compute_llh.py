@@ -44,7 +44,6 @@ def main(version: str, true: str, dataset: str):
         llh[i] = evaluator.compute_llh(checkpoint)
         mse[i] = evaluator.compute_mse(true, checkpoint)
         llr[i] = evaluator.compute_lr(true, checkpoint)
-    breakpoint()
     
     # Aggregate results
     mse_mean = np.mean(mse, axis=0)

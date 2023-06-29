@@ -110,8 +110,7 @@ def train(dataset:str, dataset_type: str, weight: float):
     # Fine-tune on normal data
     trainer = pl.Trainer(max_steps=args.training_steps,
                                  inference_mode=False,
-                                 callbacks=[checkpointer,
-                                            EarlyStopping(monitor="val_log_density", mode="max",  min_delta=0.00, patience=3,)],
+                                 callbacks=[checkpointer],
                                  log_every_n_steps=args.logging_interval,
                                  accelerator=device)
     trainer.fit(flow_module, normal_train, val)
