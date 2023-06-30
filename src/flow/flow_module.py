@@ -8,10 +8,9 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from nflows import flows, distributions, transforms
 from nflows.nn.nets import ResidualNet
-from experiments.flow.parameters import Parameters
+from flow.parameters import Parameters
 import utils
 from tqdm import tqdm
-from parameters import Parameters
 from data.base import CustomDataset
 import numpy as np
 from typing import Any, List, Tuple

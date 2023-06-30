@@ -1,8 +1,5 @@
 import sys
 sys.path.append('src')
-sys.path.append('src/data')
-sys.path.append('src/experiments')
-sys.path.append('src/experiments/flow')
 
 import numpy as np
 import scipy.stats
@@ -10,28 +7,26 @@ from pprint import pprint
 from datetime import datetime
 
 import torch
-from torch import nn
 from torch import optim
-from torch.utils.data import Dataset
-from nflows import flows, distributions, transforms
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from torch.utils.data import DataLoader
+
+from nflows import distributions, transforms
 from nflows import transforms
 from nflows.flows.base import Flow
 from nflows.nn.nets import ResidualNet
+
 import pytorch_lightning as pl
-from torch.utils.data import DataLoader
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 
 
 from flow.flow_module import FlowModule
 
 # from flow_module import create_flow
-from parameters import get_parameters
+import flow.parameters as parameters
+
 import utils
-import json
 from pathlib import Path
-import pandas as pd
-from power import Power
 
 N_DIM = list(range(2,6))
 N_SAMPLES = [100, 1000, 10_000, 100_000]
@@ -101,17 +96,19 @@ def get_true_distribution(num_dim):
 
 
 if __name__ =='__main__': 
-    dataset = Power
-    train_full = dataset(split='_train').data
-    test_full = dataset(split='_test').data
-    args = get_parameters('power')
-    results = []
     device, _ = utils.set_device()
     
-    for num_dim in N_DIM:
-        # Generate test samples
-        distribution = get_true_distribution(num_dim)
-        
+    # Get arguments and dataset
+    dataset_str = 'gas'
+    dataset = parameters.get_dataset(dataset_str)
+    args = parameters.get_parameters(dataset_str)
+    
+    # Initialize data
+    train_full = dataset(split='_train').data
+    test_full = dataset(split='_test').data
+    results = []
+    
+    for num_dim in N_DIM:        
         for num_samples in N_SAMPLES:
             
             for m in range(50):

@@ -2,7 +2,7 @@ import sys
 sys.path.append('src')
 
 import utils
-from config import SharedParameters as params
+from kde.config import SharedParameters as params
 import click
 from pathlib import Path
 import numpy as np

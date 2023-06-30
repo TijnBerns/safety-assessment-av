@@ -44,8 +44,5 @@ def plot():
     plt.savefig('img/kde_bw.pgf')
     
 
-
-
-
 if __name__  == '__main__':
     plot()

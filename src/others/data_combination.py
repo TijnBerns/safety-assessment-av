@@ -13,7 +13,7 @@ parent = os.path.dirname(current)
 # the sys.path.
 sys.path.append(parent)
 
-from config import UVParameters as uv_params
+from kde.config import UVParameters as uv_params
 import data.data_utils as data_utils
 from itertools import product
 import scipy.stats
