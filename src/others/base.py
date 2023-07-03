@@ -3,7 +3,7 @@ sys.path.append('src')
 sys.path.append('src/kde')
 
 import utils
-from kde.config import SharedParameters as params
+from src.kde.parameters import SharedParameters as params
 import click
 from pathlib import Path
 import numpy as np
