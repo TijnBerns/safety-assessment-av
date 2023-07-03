@@ -1,3 +1,6 @@
+import sys
+sys.path.append('src')
+
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from pathlib import Path
@@ -9,7 +12,6 @@ from config import UVParameters as uv_params
 from utils import variables_from_filename
 
 
-
 import data.data_utils as data_utils
 
 import matplotlib
@@ -19,6 +21,7 @@ matplotlib.rcParams["font.size"] = "8"
 
 FIGSIZE = (3, 2.2)
 
+
 def tikzplotlib_fix_ncols(obj):
     """
     workaround for matplotlib 3.6 renamed legend's _ncol to _ncols, which breaks tikzplotlib
@@ -27,6 +30,7 @@ def tikzplotlib_fix_ncols(obj):
         obj._ncol = obj._ncols
     for child in obj.get_children():
         tikzplotlib_fix_ncols(child)
+
 
 def exp0(path: Path, results_files="*corr_0.5*results.csv"):
     files = list(path.rglob(results_files))
@@ -51,7 +55,7 @@ def exp0(path: Path, results_files="*corr_0.5*results.csv"):
         np.percentile(sd, 2.5, axis=0),
         np.percentile(sd, 97.5, axis=0),
         alpha=0.25,
-        label = '95\% confidence interval'
+        label='$2.5-97.5$ percentile'
     )
     axs.legend()
     axs.set_xlabel('$x$')
@@ -67,7 +71,7 @@ def exp0(path: Path, results_files="*corr_0.5*results.csv"):
         np.percentile(mse, 2.5, axis=0),
         np.percentile(mse, 97.5, axis=0),
         alpha=0.25,
-        label = '95\% confidence interval'
+        label='$2.5-97.5$ percentile'
     )
     axs.set_xlabel('$x$')
     axs.set_ylabel('improved MSE / baseline MSE')
@@ -76,33 +80,38 @@ def exp0(path: Path, results_files="*corr_0.5*results.csv"):
     plt.savefig(f'img/kde_mse_{path.name}.pgf')
 
 #######################################################################
+
+
 def _plot(axs, df, label, tp: str):
     if tp.lower() == 'sd':
         tp = 'std'
-    axs.plot(df["x"], df[f"improved_{tp}".lower()] / df[f"baseline_{tp}".lower()], label=label)
+    axs.plot(df["x"], df[f"improved_{tp}".lower()] /
+             df[f"baseline_{tp}".lower()], label=label)
     axs.legend()
-    
+
+
 def plot(files, save):
     results = np.zeros((6, len(files), uv_params.num_eval))
 
+
 def exp1():
     labels = [
-         f'$\\rho = 0.1$',
+        f'$\\rho = 0.1$',
         f'$\\rho = 0.5$',
-         f'$\\rho = 0.9$',
+        f'$\\rho = 0.9$',
     ]
-    
+
     files = [Path("estimates/kde_naive_ensemble/gaussian/results/p_edge_0.08.n_normal_1000.n_edge_1000.corr_0.1.results.csv"),
              Path("estimates/kde_naive_ensemble/gaussian/results/p_edge_0.08.n_normal_1000.n_edge_1000.corr_0.5.results.csv"),
              Path("estimates/kde_naive_ensemble/gaussian/results/p_edge_0.08.n_normal_1000.n_edge_1000.corr_0.9.results.csv")]
-    
+
     for tp in ['SD', 'MSE']:
         _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
         axs.set_xlabel('$x$')
         axs.set_ylabel(f'improved {tp} / baseline {tp}')
         for label, f in zip(labels, files):
-            df = pd.read_csv(            f             )
-    
+            df = pd.read_csv(f)
+
             _plot(axs, df, label, tp)
         plt.tight_layout()
         plt.savefig(f'img/naive_kde_correlation_{tp}.pgf'.lower())
@@ -116,21 +125,23 @@ def exp2(root: Path):
         axs.set_xlabel('$x$')
         axs.set_ylabel(f'improved {tp} / baseline {tp}')
         for n in N:
-            files = list(root.rglob(f"*p_edge_0.08.n_normal_{n}.n_edge_{n}.*corr_0.5*results.csv"))
+            files = list(root.rglob(
+                f"*p_edge_0.08.n_normal_{n}.n_edge_{n}.*corr_0.5*results.csv"))
             for f in files:
                 df = pd.read_csv(f)
-            
-                _plot(axs, df, '$N_\\textrm{norm}=N_\\textrm{event}=' + str(n) + '$', tp)
+
+                _plot(
+                    axs, df, '$N_\\textrm{norm}=N_\\textrm{event}=' + str(n) + '$', tp)
         plt.tight_layout()
         # plt.show()
-        breakpoint()
         plt.savefig(f'img/naive_kde_observations_{tp}.pgf'.lower())
-
 
 
 def exp3(root: Path):
     # Sort the files based on p_edge
-    files = list(root.rglob("*.n_normal_1000.n_edge_1000.corr_0.5.results.csv"))
+    files = list(root.rglob(
+        "*.n_normal_1000.n_edge_1000.corr_0.5.results.csv"))
+
     def f_sort(f: Path):
         p_edge = variables_from_filename(f.name)[0]
         return p_edge
@@ -146,48 +157,49 @@ def exp3(root: Path):
                 continue
 
             df = pd.read_csv(f)
-            
+
             _plot(axs, df, '$p_\\textrm{event}=' + str(p_edge) + '$', tp)
         plt.tight_layout()
         # plt.show()
         plt.savefig(f'img/naive_kde_pedge_{tp}.pgf'.lower())
-        
-        
+
+
 def exp4(path: Path):
     df = pd.read_csv(path)
     fig, axs = plt.subplots(1, 1, figsize=FIGSIZE)
-    axs.plot(df['x'], df['improved_mse'] / df['baseline_mse'], label='improved MSE / baseline MSE')
-    axs.plot(df['x'], df['improved_std'] / df['baseline_std'], label='improved SD / baseline SD')
+    axs.plot(df['x'], df['improved_mse'] / df['baseline_mse'],
+             label='improved MSE / baseline MSE')
+    axs.plot(df['x'], df['improved_std'] / df['baseline_std'],
+             label='improved SD / baseline SD')
     axs.legend()
     axs.set_xlabel('$x$')
     plt.tight_layout()
     plt.savefig(f'img/naive_kde_{path.parts[-3]}.pgf')
-    
-    
+
     _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
     axs.plot(df['x'], df['true'], label='true', linestyle='dotted')
     axs.plot(df['x'], df['baseline_mean'], label='baseline', alpha=0.5)
     axs.plot(df['x'], df['improved_mean'], label='improved', alpha=0.5)
-    
-    max_y = max(max(df['true']), max(df['baseline_mean']), max(df['improved_mean']))
-    min_y = min(min(df['true']), min(df['baseline_mean']), min(df['improved_mean'])) - 0.05
+
+    max_y = max(max(df['true']), max(df['baseline_mean']),
+                max(df['improved_mean']))
+    min_y = min(min(df['true']), min(df['baseline_mean']),
+                min(df['improved_mean'])) - 0.05
     axs.set_xlabel('$x$')
     axs.set_ylabel(f'$f(x)$')
     if max_y > 1:
-        axs.set_ylim(bottom = min_y, top=2)
+        axs.set_ylim(bottom=min_y, top=2)
     axs.legend()
     plt.tight_layout()
     plt.savefig(f'img/naive_kde_pred_{path.parts[-3]}.pgf')
-        
-    
-    
+
     # axs.plot(x_values, sd.mean(axis=0), label='mean')
     # axs.fill_between(
     #     x_values,
     #     np.percentile(sd, 2.5, axis=0),
     #     np.percentile(sd, 97.5, axis=0),
     #     alpha=0.25,
-    #     label = '95\% confidence interval'
+    #     label = '$2.5-97.5$ percentile'
     # )
     # axs.legend()
     # axs.set_xlabel('$x$')
@@ -195,9 +207,7 @@ def exp4(path: Path):
     # plt.tight_layout()
     # plt.savefig(f'img/kde_sd_{path.name}.pgf')
 
-        
-    
-        
+
 def main():
     root_ensemble = Path('estimates/kde_naive_ensemble/gaussian')
     root_data_combination = Path('estimates/combined_data')
@@ -218,16 +228,17 @@ def main():
 
     # Experiment 3: Change p_event
     exp3(root_ensemble)
-    
+
     # Experiment 4: Beta and gumbell distribution
     # results_files = '*p_edge_0.04.n_normal_1000.n_edge_1000.results.csv'
     # results_files = '*results.csv'
     # exp0(Path('estimates/kde_combined_estimator/beta_a'), results_files)
-    # exp0(Path('estimates/kde_combined_estimator/gumbel_a'), results_files) 
+    # exp0(Path('estimates/kde_combined_estimator/gumbel_a'), results_files)
     exp4(Path('estimates/kde_combined_estimator/beta_a/results/p_edge_0.04.n_normal_1000.n_edge_1000.results.csv'))
     exp4(Path('estimates/kde_combined_estimator/gumbel_a/results/p_edge_0.04.n_normal_1000.n_edge_1000.results.csv'))
 
-if __name__ == "__main__":    
+
+if __name__ == "__main__":
     main()
 
 
