@@ -4,13 +4,12 @@ sys.path.append('src/data')
 
 import utils
 import parameters
-from flow_module import FlowModule, FlowModuleWeighted
+from flow_module import FlowModule, FlowModuleWeighted, FlowModuleTrainableWeightB
 
 import click
 import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 from torch.utils.data import DataLoader
 from data.base import CustomDataset
@@ -74,7 +73,7 @@ def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str)
 
 def create_module(dataset: CustomDataset, features: int, dataset_type: str, weight:float, args: parameters.Parameters, stage: int):
     if dataset_type in ['weighted', 'sampled_weighted']:
-        return FlowModuleWeighted(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
+        return FlowModuleTrainableWeightB(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
     else:
         return FlowModule(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
    
@@ -93,6 +92,8 @@ def train(dataset:str, dataset_type: str, weight: float):
     args = parameters.get_parameters(dataset)
     dataset = parameters.get_dataset(dataset)
     normal_train, _, val = create_data_loaders(dataset, args.batch_size, dataset_type)
+    
+    print(f"\n\n!!!!!!!!!!!{normal_train.dataset.data.shape}!!!!!!!!!!!!!!!!\n\n")
     
     # Get device
     device, version = utils.set_device()

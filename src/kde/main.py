@@ -1,7 +1,7 @@
 import sys
 sys.path.append('src')
 
-from config import UVParameters as uv_params
+from src.kde.parameters import UVParameters as uv_params
 import estimator
 import click
 

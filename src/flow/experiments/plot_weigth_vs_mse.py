@@ -1,58 +1,51 @@
 import sys
 sys.path.append('src')
+sys.path.append('src/flow')
 
-import numpy as np
-import scipy.stats
-from pprint import pprint
-from datetime import datetime
-from typing import List
+
 import click
 import pandas as pd
-
 from flow import compute_llh
-import matplotlib.pyplot as plt
-# from flow_module import create_flow
-import flow.parameters as parameters
+from utils import FIGSIZE_1_2 as FIGSIZE
 
-import utils
-from pathlib import Path
+import matplotlib
+import matplotlib.pyplot as plt
+matplotlib.rcParams["text.usetex"] = True
+matplotlib.rcParams["font.family"] = "serif"
+matplotlib.rcParams["font.size"] = "8"
 
 @click.command()
 @click.option('--true', type=str)
-@click.option('--weights', type=List[str])
-@click.option('--versions',type=List[str])
+@click.option('--weights', multiple=True)
+@click.option('--versions',multiple=True)
 @click.option('--dataset',type=str)
-def main(versions, weights, true, dataset):
-    assert len(version) == len(weights), f"expected versions and weights to be of same length but got: {len(versions)} and {len(weights)}"
+def main(versions, weights, true, dataset) -> None:
+    assert len(versions) == len(weights), f"expected versions and weights to be of same length but got: {len(versions)} and {len(weights)}"
+    print(list(zip(versions, weights)))
     
-    df = pd.DataFrame()
+    df = None
     for weight, version in zip(weights, versions):
-        row = compute_llh.compute_llh(version, true, dataset)
-        row['weight'] = weight
-        df = pd.concat([df, pd.DataFrame(row)])
-        
-    _, axs = plt.subplots(1,1)
-    axs.plot(df['weight'], df['mse_all'], label='all')
-    axs.plot(df['weight'], df['mse_non_event'], label='non-event')
-    axs.plot(df['weight'], df['mse_event'], label='event')
-    axs.set_xlabel('weight')
-    axs.set_ylabel('MSE')
+        # Compute llh and mse
+        row = compute_llh.compute_llh(version=version, true=true, dataset=dataset)
+        row[0]['weight'] = weight
+ 
+        # Add row to dataframe
+        if df is None:
+            df = pd.DataFrame(row)
+        else:
+            df = pd.concat([df, pd.DataFrame(row)])
     
-    plt.savefig('img/weight_vs_mse.png')
+    for score in ['mse', 'llh']:
+        for label in ['all', 'non-event', 'event']:    
+            col = label.replace('-', '_')
+            _, axs = plt.subplots(1,1, figsize=FIGSIZE)
+            axs.plot(df['weight'], df[f'{score}_{col}'], label=label)
+            axs.set_xlabel('$w$')
+            axs.set_ylabel('MSE')
+            plt.tight_layout()
+            plt.savefig(f'img/weight_vs_{score}_{col}.pgf')
 
 
 if __name__ =='__main__': 
-    device, _ = utils.set_device()
-    
-    # Get arguments and dataset
-    dataset_str = 'gas'
-    dataset = parameters.get_dataset(dataset_str)
-    args = parameters.get_parameters(dataset_str)
-    
-    # Initialize data
-    train_full = dataset(split='_train').data
-    test_full = dataset(split='_test').data
-    results = []
-    
-
+    main()
     

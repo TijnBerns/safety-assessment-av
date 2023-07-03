@@ -24,8 +24,8 @@ from experiments.ffn.model import FeedForward
 from tqdm import tqdm
 from pytorch_lightning.callbacks import ModelCheckpoint
 import pytorch_lightning as pl
-from config import UVParameters as uv_params
-from config import MVParameters as mv_params
+from src.kde.parameters import UVParameters as uv_params
+from src.kde.parameters import MVParameters as mv_params
 import torch
 from torch.utils.data import DataLoader
 import data.data_utils as data_utils

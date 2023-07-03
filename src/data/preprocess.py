@@ -126,7 +126,7 @@ def save_splits(dataset: CustomDataset):
         'corr': np.max(np.mean(corr, axis=0)), 
         'threshold': threshold,
         '_threshold': _threshold,
-        'weight': compute_event_weight(train_normal, train_event, xi, threshold_unnormalized)
+        'weight': compute_event_weight(train_normal, train_event, xi, threshold)
     }
     save_json(dataset.root / 'stats.json', stats)
     

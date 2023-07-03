@@ -6,15 +6,15 @@ project_dir=.
 source "$project_dir"/venv/bin/activate
 export DATAROOT='/scratch/tberns/data'
 
-python src/experiments/flow/compute_llh.py --true=253784 --version=448275 --dataset=gas
-python src/experiments/flow/compute_llh.py --true=253784 --version=448277 --dataset=gas
-python src/experiments/flow/compute_llh.py --true=253784 --version=448278 --dataset=gas
-python src/experiments/flow/compute_llh.py --true=253784 --version=448279 --dataset=gas
-python src/experiments/flow/compute_llh.py --true=253784 --version=448280 --dataset=gas
-python src/experiments/flow/compute_llh.py --true=253784 --version=448281 --dataset=gas
-python src/experiments/flow/compute_llh.py --true=253784 --version=448283 --dataset=gas
-python src/experiments/flow/compute_llh.py --true=253784 --version=448284 --dataset=gas
-python src/experiments/flow/compute_llh.py --true=253784 --version=448283 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=454675 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=454676 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=454677 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=454678 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=454679 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=454680 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=454681 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=454682 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=454683 --dataset=gas
 
 
 

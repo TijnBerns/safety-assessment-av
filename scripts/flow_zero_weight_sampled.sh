@@ -14,4 +14,4 @@ project_dir=.
 # Train on train-full with no speaker change symbols or ids
 source "$project_dir"/venv/bin/activate
 export DATAROOT='/scratch/tberns/data'
-srun python "$project_dir"/src/experiments/flow/train.py --dataset=$1 --dataset_type=sampled_zero_weight
+srun python "$project_dir"/src/flow/train.py --dataset=$1 --dataset_type=sampled_zero_weight

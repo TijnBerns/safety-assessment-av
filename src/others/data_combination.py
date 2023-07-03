@@ -13,7 +13,7 @@ parent = os.path.dirname(current)
 # the sys.path.
 sys.path.append(parent)
 
-from kde.config import UVParameters as uv_params
+from src.kde.parameters import UVParameters as uv_params
 import data.data_utils as data_utils
 from itertools import product
 import scipy.stats
@@ -35,7 +35,7 @@ LABELS = {
     'correlation': '$\\rho$'
 }
 
-FIGSIZE = (3.3, 2.0)
+FIGSIZE = (3., 1.8)
     
 def main():
     correlation = list(np.arange(0.1, 1, 0.1))

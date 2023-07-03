@@ -5,7 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 import numpy as np
 
-from config import UVParameters as uv_params
+from src.kde.parameters import UVParameters as uv_params
 from utils import variables_from_filename
 
 
