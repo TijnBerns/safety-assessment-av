@@ -8,7 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 import numpy as np
 
-from src.kde.parameters import UVParameters as uv_params
+from parameters import UVParameters as uv_params
 from utils import variables_from_filename
 
 
@@ -64,6 +64,7 @@ def exp0(path: Path, results_files="*corr_0.5*results.csv"):
     plt.savefig(f'img/kde_sd_{path.name}.pgf')
 
     fig, axs = plt.subplots(1, 1, figsize=FIGSIZE)
+    breakpoint()
     mse = results[3] / results[0]
     axs.plot(x_values, mse.mean(axis=0), label='mean')
     axs.fill_between(
