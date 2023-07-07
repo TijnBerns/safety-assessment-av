@@ -4,7 +4,7 @@ sys.path.append('src/data')
 
 import utils
 import parameters
-from flow_module import FlowModule, FlowModuleWeighted, FlowModuleTrainableWeightB
+from flow_module import FlowModule, FlowModuleWeighted
 
 import click
 import numpy as np
@@ -73,7 +73,7 @@ def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str)
 
 def create_module(dataset: CustomDataset, features: int, dataset_type: str, weight:float, args: parameters.Parameters, stage: int):
     if dataset_type in ['weighted', 'sampled_weighted']:
-        return FlowModuleTrainableWeightB(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
+        return FlowModuleWeighted(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
     else:
         return FlowModule(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
    
@@ -92,7 +92,6 @@ def train(dataset:str, dataset_type: str, weight: float):
     args = parameters.get_parameters(dataset)
     dataset = parameters.get_dataset(dataset)
     normal_train, _, val = create_data_loaders(dataset, args.batch_size, dataset_type)
-    
     print(f"\n\n!!!!!!!!!!!{normal_train.dataset.data.shape}!!!!!!!!!!!!!!!!\n\n")
     
     # Get device
@@ -105,6 +104,7 @@ def train(dataset:str, dataset_type: str, weight: float):
     features = normal_train.dataset.data.shape[1]
     flow_module = create_module(features=features, dataset=dataset(), dataset_type=dataset_type, args=args, stage=1, weight=weight)
 
+    
     # Initialize checkpointers
     checkpointer = create_checkpointer()
 

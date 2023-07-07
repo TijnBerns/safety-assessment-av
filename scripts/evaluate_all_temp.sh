@@ -6,15 +6,32 @@ project_dir=.
 source "$project_dir"/venv/bin/activate
 export DATAROOT='/scratch/tberns/data'
 
-python src/flow/compute_llh.py --true=253784 --version=454675 --dataset=gas
-python src/flow/compute_llh.py --true=253784 --version=454676 --dataset=gas
-python src/flow/compute_llh.py --true=253784 --version=454677 --dataset=gas
-python src/flow/compute_llh.py --true=253784 --version=454678 --dataset=gas
-python src/flow/compute_llh.py --true=253784 --version=454679 --dataset=gas
-python src/flow/compute_llh.py --true=253784 --version=454680 --dataset=gas
-python src/flow/compute_llh.py --true=253784 --version=454681 --dataset=gas
-python src/flow/compute_llh.py --true=253784 --version=454682 --dataset=gas
-python src/flow/compute_llh.py --true=253784 --version=454683 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=659061 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=659062 --dataset=gas
+python src/flow/compute_llh.py --true=253784 --version=669556 --dataset=gas
+
+python src/flow/compute_llh.py --true=270632 --version=659064 --dataset=power
+python src/flow/compute_llh.py --true=270632 --version=659065 --dataset=power
+python src/flow/compute_llh.py --true=270632 --version=669557 --dataset=power
+
+python src/flow/compute_llh.py --true=320617 --version=659067 --dataset=miniboone
+python src/flow/compute_llh.py --true=320617 --version=659068 --dataset=miniboone
+python src/flow/compute_llh.py --true=320617 --version=669558 --dataset=miniboone
+
+python src/flow/compute_llh.py --true=270635 --version=669559 --dataset=hepmass
+python src/flow/compute_llh.py --true=270635 --version=669560 --dataset=hepmass
+python src/flow/compute_llh.py --true=270635 --version=669561 --dataset=hepmass
+
+
+
+
+
+
+
+
+
+
+
 
 
 

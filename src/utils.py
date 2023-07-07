@@ -39,7 +39,7 @@ FIGSIZE_1_3 = (2.0, 2.0)
 
 
 def seed_all(seed: int):
-    torch.manual_seed(seed)
+    torch.manual_seed(seed) 
     random.seed(seed)
     np.random.seed(seed)
     

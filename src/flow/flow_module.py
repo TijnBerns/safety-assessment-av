@@ -14,7 +14,9 @@ from tqdm import tqdm
 from data.base import CustomDataset
 import numpy as np
 from typing import Any, List, Tuple
-
+from data.power import Power
+from data.gas import Gas
+import scipy.special
 
 def create_linear_transform(features):
     return transforms.CompositeTransform([
@@ -64,7 +66,7 @@ class FlowModule(pl.LightningModule):
                  dataset: CustomDataset,
                  args: Parameters, 
                  stage: int=1,
-                 weight=None) -> None:
+                 weight: float = 1.0) -> None:
         super().__init__()
         self.features = features
         self.flow = create_flow(features, args)
@@ -213,10 +215,7 @@ class FlowModule(pl.LightningModule):
                 self.flow.parameters(), lr=self.lr)
             return [optimizer]
         else:
-            raise ValueError
- 
-
-        
+            raise ValueError        
         
 class FlowModuleWeighted(FlowModule):
     def __init__(self,  
@@ -231,6 +230,11 @@ class FlowModuleWeighted(FlowModule):
         # self.weight_optimizer = torch.optim.Adam([self.unconstrained_weight], lr=0.05)
         # self.weight_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.weight_optimizer, T_max=self.max_steps_stage_two // self.batch_size, eta_min=0)
         
+    def _compute_weighted_loss(self, non_event, event):
+        # constrained_weight = torch.nn.functional.sigmoid(self.event_weight)
+        constrained_weight = self.event_weight
+        return - torch.mean(torch.cat((non_event, constrained_weight * event)))
+    
     
     def training_step(self, batch, batch_idx) -> torch.Tensor:
         non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
@@ -242,7 +246,7 @@ class FlowModuleWeighted(FlowModule):
         # weighted_log_density = torch.mean(non_event) + constrained_weight * torch.mean(event)
         # loss = - weighted_log_density + regularization_term
         constrained_weight = self.event_weight
-        loss = - (torch.mean(non_event) + constrained_weight * torch.mean(event))
+        loss = self._compute_weighted_loss(non_event, event)
         
         self.train_mean_log_density(-loss)
         self.log("weighted_log_density", -loss, batch_size=self.batch_size)
@@ -264,31 +268,35 @@ class FlowModuleTrainableWeight(FlowModule):
                  dataset: CustomDataset,
                  args: Parameters, 
                  stage: int=1,
-                 weight=None) -> None:
+                 weight: float=1.0) -> None:
         super().__init__(features=features, args=args, dataset=dataset, stage=stage, weight=weight)
-        dataset.__init__(split='normal_sampled')
         
-        self.normal_dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
-        # self.event_weight = torch.nn.Parameter(torch.logit(torch.tensor(self.event_weight)))
-        self.event_weight = torch.nn.Parameter(torch.tensor(self.event_weight))
-        self.weight_optimizer = torch.optim.Adam([self.event_weight], lr=0.005)
-        
+        # self.event_weight = torchtorch.logit(torch.tensor(self.event_weight))
+        self.normal_dataloader = DataLoader(Gas(split='normal_sampled'), batch_size=args.batch_size, shuffle=False)
+        # self.event_weight = torch.nn.Parameter(torch.tensor(self.event_weight))
+        # self.weight_optimizer = torch.optim.Adam([self.event_weight], lr=0.005)
     
-    def _compute_weighted_loss(self, non_event, event):
-        # constrained_weight = torch.nn.functional.sigmoid(self.event_weight)
+    def _compute_weighted_loss(self, non_event, event, weight):
+        # constrained_weight = torch.nn.functional.sigmoid(weight)
+        return - torch.mean(torch.cat((non_event, weight * event))), weight
+    
+    def _compute_weighted_loss_b(self, non_event, event, weight):
+        # constrained_weight = torch.nn.functional.sigmoid(weight)
+        return - torch.mean(torch.cat(((1-weight) * non_event, weight * event))), weight
+    
+    def _compute_inverse_weighted_loss(self, non_event, event):
         constrained_weight = self.event_weight
-        return - (torch.mean(non_event) + constrained_weight * torch.mean(event)), constrained_weight
+        return - torch.mean(torch.cat((constrained_weight) * non_event, (1-constrained_weight) * event)), constrained_weight
     
     def training_step(self, batch, batch_idx) -> torch.Tensor:
-        self.event_weight.requires_grad_(False)
+        # self.event_weight.requires_grad_(False)
         non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
         event = self.forward(batch[batch[:,self.xi] > self.threshold])
 
-        loss, constrained_weight = self._compute_weighted_loss(non_event, event)
+        loss, _ = self._compute_weighted_loss(non_event, event, self.event_weight)
         
         self.train_mean_log_density(-loss)
         self.log("weighted_log_density", -loss, batch_size=self.batch_size)
-        self.log('weight', constrained_weight)
         
         log_density = torch.mean(torch.cat((non_event, event)))
         self.log("log_density", log_density, batch_size=self.batch_size, prog_bar=True)
@@ -296,116 +304,154 @@ class FlowModuleTrainableWeight(FlowModule):
         self.log('non_event', torch.mean(non_event))
         return loss
     
-    def on_train_epoch_end(self) -> None:
+    # def _compute_llh(self, dataloader):
+    #     i = 0
+    #     for batch in dataloader:
+    #         batch  = batch.to(self.device)
+    #         llh[i:i + len(batch)] = self.forward(batch).to('cpu')
+    #         i += len(batch)
+    #     return torch.mean(llh)
+    
+    def on_train_epoch_start(self) -> None:
+        # Optimize weight
         self.freeze()
-        self.event_weight.requires_grad_(True)
+        epsilon = 0.05
         
-        # mean_loss = MeanMetric()
+        temp_weight_unconstrained = scipy.special.logit(0.5)
+        temp_weight_unconstrained = torch.tensor(temp_weight_unconstrained, device=self.device, requires_grad=True)
+        
         for batch in self.normal_dataloader:
             batch = batch.to(self.device)
             non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
             event = self.forward(batch[batch[:,self.xi] > self.threshold])
-            loss, _ = self._compute_weighted_loss(non_event, event)
-            # mean_loss(loss)
             
+            temp_weight_constrained = torch.sigmoid(temp_weight_unconstrained)
+            loss, _ = self._compute_weighted_loss_b(non_event, event, temp_weight_constrained)
             loss.backward()
-            self.weight_optimizer.step()
-            self.weight_optimizer.zero_grad()
+  
+            temp_weight_unconstrained.data = temp_weight_unconstrained.data + epsilon * temp_weight_unconstrained.grad.detach().sign()
+
+            temp_weight_unconstrained.grad.zero_()
+            self.log("weight", temp_weight_constrained.data, on_step=True)
             
+        self.event_weight = temp_weight_constrained.data
         self.unfreeze()
-        return super().on_train_epoch_end()
-    
-class FlowModuleTrainableWeightB(FlowModule):
-    def __init__(self,  
-                 features: int,
-                 dataset: CustomDataset,
-                 args: Parameters, 
-                 stage: int=1,
-                 weight=None) -> None:
-        super().__init__(features=features, args=args, dataset=dataset, stage=stage, weight=weight)
-        dataset.__init__(split='normal_sampled')
-        
-        self.normal_dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
-        # self.event_weight = torch.nn.Parameter(torch.logit(torch.tensor(self.event_weight)))
-        self.event_weight = torch.nn.Parameter(torch.tensor(self.event_weight))
-        self.weight_optimizer = torch.optim.Adam([self.event_weight], lr=0.005)
-        
-    
-    def _compute_weighted_loss(self, non_event, event):
-        # constrained_weight = torch.nn.functional.sigmoid(self.event_weight)
-        constrained_weight = self.event_weight
-        return - (torch.mean(non_event) + constrained_weight * torch.mean(event)), constrained_weight
-    
-    def training_step(self, batch, batch_idx) -> torch.Tensor:
-        self.event_weight.requires_grad_(False)
-        non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
-        event = self.forward(batch[batch[:,self.xi] > self.threshold])
+            
 
-        loss, constrained_weight = self._compute_weighted_loss(non_event, event)
         
-        self.train_mean_log_density(-loss)
-        self.log("weighted_log_density", -loss, batch_size=self.batch_size)
-        self.log('weight', constrained_weight)
-        
-        log_density = torch.mean(torch.cat((non_event, event)))
-        self.log("log_density", log_density, batch_size=self.batch_size, prog_bar=True)
-        self.log('event', torch.mean(event))
-        self.log('non_event', torch.mean(non_event))
-        return loss
-    
-    def on_train_epoch_end(self) -> None:
-        # UPDATE WEIGHT
-        self.freeze()
-        self.event_weight.requires_grad_(True)
-        
-        for batch in self.normal_dataloader:
-            batch = batch.to(self.device)
-            log_prob = self.forward(batch)
-            loss = - torch.mean(log_prob)
-            
-            non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
-            event = self.forward(batch[batch[:,self.xi] > self.threshold])
-            
-            weighted_loss, _ = self._compute_weighted_loss(non_event, event)
-            
-            diff = torch.square(loss - weighted_loss)
-            
-            non_event
-            # non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
-            # event = self.forward(batch[batch[:,self.xi] > self.threshold])
-            # loss, _ = self._compute_weighted_loss(non_event, event)
 
+    # def on_train_epoch_end(self) -> None:
+    #     self.freeze()
+    #     self.event_weight.requires_grad_(True)
+        
+    #     # mean_loss = MeanMetric()
+    #     for batch in self.normal_dataloader:
+    #         batch = batch.to(self.device)
             
-            diff.backward()
-            self.weight_optimizer.step()
-            self.weight_optimizer.zero_grad()
+    #         all = self.forward(batch)
+    #         non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
+    #         event = self.forward(batch[batch[:,self.xi] > self.threshold])
             
-        self.unfreeze()
-        return super().on_train_epoch_end()
+    #         non_weighted_loss = -torch.mean(all)
+    #         weighted_loss, _ = self._compute_weighted_loss(non_event, event)
+    #         loss = torch.square(non_weighted_loss - weighted_loss)
+            
+    #         loss.backward()
+    #         self.weight_optimizer.step()
+    #         self.weight_optimizer.zero_grad()
+            
+    #     self.unfreeze()
+    #     return super().on_train_epoch_end()
+    
+# class FlowModuleTrainableWeightB(FlowModule):
+#     def __init__(self,  
+#                  features: int,
+#                  dataset: CustomDataset,
+#                  args: Parameters, 
+#                  stage: int=1,
+#                  weight=None) -> None:
+#         super().__init__(features=features, args=args, dataset=dataset, stage=stage, weight=weight)
+#         dataset.__init__(split='normal_sampled')
+        
+#         self.normal_dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+#         # self.event_weight = torch.nn.Parameter(torch.logit(torch.tensor(self.event_weight)))
+#         self.event_weight = torch.nn.Parameter(torch.tensor(self.event_weight))
+#         self.weight_optimizer = torch.optim.Adam([self.event_weight], lr=0.005)
+        
+    
+#     def _compute_weighted_loss(self, non_event, event):
+#         # constrained_weight = torch.nn.functional.sigmoid(self.event_weight)
+#         constrained_weight = self.event_weight
+#         # f = len(event) / len(non_event)
+#         # breakpoint()
+#         # torch.mean(torch.cat((non_event, event)))
+#         # torch.mean(torch.cat((non_event, f * event)))
+#         return - torch.mean(torch.cat((non_event, constrained_weight * event)))
+    
+#     def training_step(self, batch, batch_idx) -> torch.Tensor:
+#         self.event_weight.requires_grad_(False)
+#         non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
+#         event = self.forward(batch[batch[:,self.xi] > self.threshold])
+#         loss, constrained_weight = self._compute_weighted_loss(non_event, event)
+        
+#         self.log("weighted_log_density", -loss, batch_size=self.batch_size)
+#         self.log('weight', constrained_weight)
+        
+#         log_density = torch.mean(torch.cat((non_event, event)))
+#         self.log("log_density", log_density, batch_size=self.batch_size, prog_bar=True)
+#         self.log('event', torch.mean(event))
+#         self.log('non_event', torch.mean(non_event))
+#         return loss
+    
+#     # def on_train_epoch_end(self) -> None:
+#     #     # UPDATE WEIGHT
+#     #     if self.current_epoch < 10:
+#     #         return super().on_train_epoch_end()
+        
+#     #     self.freeze()
+#     #     self.event_weight.requires_grad_(True)
+        
+#     #     for batch in self.normal_dataloader:
+#     #         batch = batch.to(self.device)
+            
+#     #         log_prob = self.forward(batch)
+#     #         non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
+#     #         event = self.forward(batch[batch[:,self.xi] > self.threshold])
+            
+#     #         loss = - torch.mean(log_prob)
+#     #         weighted_loss, _ = self._compute_weighted_loss(non_event, event)
+#     #         diff = torch.square(loss - weighted_loss)
+    
+#     #         diff.backward()
+#     #         self.weight_optimizer.step()
+#     #         self.weight_optimizer.zero_grad()
+            
+#         self.unfreeze()
+#         return super().on_train_epoch_end()
     
     
 
     
-class FlowModuleSampled(FlowModule):
-    def __init__(self, features: int, args: Parameters, dataset:CustomDataset , stage: int = 1, event_loader=None, n_event: int=100) -> None:
-        super().__init__(features=features, args=args, dataset=dataset, stage=stage)
-        self.alpha = 100
-        self.event_loader: DataLoader = event_loader
-        self.n_event = n_event       
+# class FlowModuleSampled(FlowModule):
+#     def __init__(self, features: int, args: Parameters, dataset:CustomDataset , stage: int = 1, event_loader=None, n_event: int=100) -> None:
+#         super().__init__(features=features, args=args, dataset=dataset, stage=stage)
+#         self.alpha = 100
+#         self.event_loader: DataLoader = event_loader
+#         self.n_event = n_event       
     
-    def on_test_epoch_start(self) -> None:
-        # Resample event data from event model
-        idx = np.random.choice(self.event_loader.dataset.data.shape[0], size=self.n_event, replace=False)
-        new_event = self.event_loader.dataset.data[idx, :]
+#     def on_test_epoch_start(self) -> None:
+#         # Resample event data from event model
+#         idx = np.random.choice(self.event_loader.dataset.data.shape[0], size=self.n_event, replace=False)
+#         new_event = self.event_loader.dataset.data[idx, :]
         
-        # Get all non event data
-        data =  self.train_dataloader().data
-        non_event = data[data[:,self.xi] <= self.threshold]
+#         # Get all non event data
+#         data =  self.train_dataloader().data
+#         non_event = data[data[:,self.xi] <= self.threshold]
         
-        # Update the train dataloader
-        train_loader = DataLoader(torch.cat((non_event, new_event), 0), shuffle=True, batch_size=self.batch_size)
-        self.trainer.train_dataloader = train_loader
-        return super().on_train_epoch_end()
+#         # Update the train dataloader
+#         train_loader = DataLoader(torch.cat((non_event, new_event), 0), shuffle=True, batch_size=self.batch_size)
+#         self.trainer.train_dataloader = train_loader
+#         return super().on_test_epoch_start()
     
         
 

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Tuple
 import click
 from torch.utils.data import DataLoader
-from flow_module import FlowModule, FlowModuleWeighted
+from flow_module import FlowModule, FlowModuleTrainableWeight
 import matplotlib.pyplot as plt
 import parameters
 from utils import save_json
@@ -77,6 +77,10 @@ def get_checkpoint(version: str) -> Tuple[List[Path], None]:
     best_checkpoint = list(path.rglob('*best.ckpt'))
     return best_checkpoint, None
 
+def get_llh(version: str) -> List[Path]:
+    path = Path(f'/home/tberns/safety-assessment-av/lightning_logs/version_{version}/checkpoints')
+    return list(path.rglob('*best.llh.pt'))
+    
 
 def get_best_checkpoint(checkpoints: List[Path]):
     """Gets the best checkpoint based on the loglikelihood out of a list of checkpoints.
@@ -128,18 +132,22 @@ class Evaluator():
     def _initialize_dataloaders(self, dataset:data.base.CustomDataset, args: parameters.Parameters) -> DataLoader:
         self.threshold = dataset._threshold
         self.xi = dataset.xi
-        
-        event_data = dataset.data[dataset.data[:,self.xi] > self.threshold]
-        normal_data = dataset.data[dataset.data[:,self.xi] <= self.threshold]
+        self.event = dataset.data[dataset.data[:,self.xi] > self.threshold]
+        self.normal = dataset.data[dataset.data[:,self.xi] <= self.threshold]
+        self.all = dataset.data
         self.test = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
-        self.normal = DataLoader(normal_data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
-        self.event = DataLoader(event_data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
+
     
     def _load_checkpoint(self, checkpoint: Path) -> FlowModule:
         # Load model from checkpoint
-        flow_module = FlowModule.load_from_checkpoint(checkpoint, features=self.features, 
-                                                      device=self.device, args=self.args, 
-                                                      dataset=self.dataset, map_location="cpu").eval()
+        try:
+            flow_module = FlowModule.load_from_checkpoint(checkpoint, features=self.features, 
+                                                        device=self.device, args=self.args, 
+                                                        dataset=self.dataset, map_location="cpu").eval()
+        except:
+            flow_module = FlowModuleTrainableWeight.load_from_checkpoint(checkpoint, features=self.features, 
+                                                        device=self.device, args=self.args, 
+                                                        dataset=self.dataset, map_location="cpu").eval()
         return flow_module.to(self.device)
     
     def _likelihood_ratio(self, true, other):
@@ -147,11 +155,25 @@ class Evaluator():
     
     def _mse(self, true, other):
         return float(torch.mean(torch.square(true - other)))
-
-    def _split_llh(self, llh):
+    
+    def _remove_outliers(self, true, estimate):
+        # Compute upper and lower limits
+        Q1 = np.percentile(true, 25, method='midpoint')
+        Q3 = np.percentile(true, 75, method='midpoint')
+        IQR = Q3 - Q1
+        lower = Q1 - 1.5 * IQR
+        upper = Q3 + 1.5 * IQR
+        mask = torch.logical_and(true >= lower, true <= upper)
+        
+        # Also remove outliers from dataset
+        data = self.all[mask]
+        return true[mask], estimate[mask], data
+    
+    
+    def _split_llh(self, llh, data):
         llh_all = llh
-        llh_non_event = llh[self.test.dataset[:,self.xi] <= self.threshold]
-        llh_event = llh[self.test.dataset[:,self.xi] > self.threshold]
+        llh_non_event = llh[data[:,self.xi] <= self.threshold]
+        llh_event = llh[data[:,self.xi] > self.threshold]
         return llh_all, llh_non_event, llh_event
     
     def compute_llh_tensor(self, checkpoint: Path) -> torch.Tensor:
@@ -163,27 +185,28 @@ class Evaluator():
         torch.save(llh, Path(checkpoint).parent / (checkpoint.name[:-4] + "llh.pt"))
 
         # Split in all, non-event, and event
-        llh_all, llh_non_event, llh_event = self._split_llh(llh)
+        llh_all, llh_non_event, llh_event = self._split_llh(llh, self.all)
         
         # Return mean log-likelihood on non-event and event data
         return torch.mean(llh_all), torch.mean(llh_non_event), torch.mean(llh_event)
     
-    def compute_llh(self, checkpoint: Path):
-        # Load likelihood tensors
-        llh_estimate = torch.load(checkpoint.parent / (checkpoint.name[:-4] + "llh.pt"))
+    def compute_llh(self, llh_estimate: Path):
+        # Load llh tensor
+        llh_estimate = torch.load(llh_estimate)
         
         # Split in all, non-event, and event
-        all, non_event, event = self._split_llh(llh_estimate)
+        all, non_event, event = self._split_llh(llh_estimate, self.all)
         return float(torch.mean(all).item()), float(torch.mean(non_event).item()), float(torch.mean(event).item())
         
-    def compute_lr(self, true: Path, checkpoint: Path) -> Tuple[float, float]: 
+    def compute_lr(self, true: Path, llh_estimate: Path) -> Tuple[float, float]: 
         # Load likelihood tensors
-        llh_estimate = torch.load(checkpoint.parent / (checkpoint.name[:-4] + "llh.pt"))
+        llh_estimate = torch.load(llh_estimate)
         llh_true = torch.load(true.parent / (true.name[:-4] + "llh.pt"))
+        llh_true, llh_estimate, data = self._remove_outliers(llh_true, llh_estimate)
         
         # Split in all, non-event, and event
-        all_estimate, non_event_estimate, event_estimate = self._split_llh(llh_estimate)
-        all_true, non_event_true, event_true = self._split_llh(llh_true)
+        all_estimate, non_event_estimate, event_estimate = self._split_llh(llh_estimate, data)
+        all_true, non_event_true, event_true = self._split_llh(llh_true, data)
         
         # Compute llh-ratios
         ratio_all = self._likelihood_ratio(all_true, all_estimate)
@@ -192,14 +215,15 @@ class Evaluator():
         return ratio_all, ratio_non_event, ratio_event
     
     
-    def compute_mse(self, true: Path, checkpoint: Path) -> Tuple[float, float]: 
+    def compute_mse(self, true: Path, llh_estimate: Path) -> Tuple[float, float]: 
         # Load likelihood tensors
-        llh_estimate = torch.load(checkpoint.parent / (checkpoint.name[:-4] + "llh.pt"))
+        llh_estimate = torch.load(llh_estimate)
         llh_true = torch.load(true.parent / (true.name[:-4] + "llh.pt"))
+        llh_true, llh_estimate, data = self._remove_outliers(llh_true, llh_estimate)
         
         # Split in all, non-event, and event
-        all_estimate, non_event_estimate, event_estimate = self._split_llh(llh_estimate)
-        all_true, non_event_true, event_true = self._split_llh(llh_true)
+        all_estimate, non_event_estimate, event_estimate = self._split_llh(llh_estimate, data)
+        all_true, non_event_true, event_true = self._split_llh(llh_true, data)
         
         # Compute llh-ratios
         mse_all = self._mse(all_true, all_estimate)
@@ -212,7 +236,6 @@ def evaluate(version: str, dataset:str, test_set: str):
     utils.seed_all(2023)
     evaluator = Evaluator(dataset=dataset, version=version, test_set=test_set)
     best, _ = get_checkpoint(version)
-
     for checkpoint in tqdm(best):
         print(f'Evaluating {checkpoint}')
         evaluator.compute_llh_tensor(checkpoint)
@@ -223,7 +246,7 @@ def evaluate(version: str, dataset:str, test_set: str):
 @click.option('--dataset', default='hepmass')
 @click.option('--test_set', default='all', help='Whether to evaluate on test data normalized using all data or normal data only. Choices: [normal, all]')
 def main(version: str, dataset: str, test_set: str):
-    evaluate(version=version,dataset=dataset, test_set=test_set)
+    evaluate(version=version, dataset=dataset, test_set=test_set)
 
            
 

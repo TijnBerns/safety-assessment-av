@@ -30,8 +30,10 @@ def sample(dataset:str, version: str, num_samples: int) -> Tuple[np.ndarray, np.
     Returns:
         Tuple[np.ndarray, np.ndarray]: _description_
     """
-    num_samples = None
+
     # Set device dataset and parameters for given dataset
+    
+    num_samples = None
     utils.seed_all(2023)
     device, _ = set_device()
     args = parameters.get_parameters(dataset)
@@ -46,14 +48,15 @@ def sample(dataset:str, version: str, num_samples: int) -> Tuple[np.ndarray, np.
     best, _ = get_checkpoint(version)
     best = get_best_checkpoint(best)
     flow_module = FlowModule.load_from_checkpoint(best, features=features, device=device, args=args, dataset=dataset, map_location=torch.device('cpu')).eval()
+    
     # flow_module = flow_module.to(device)
-   
     if num_samples is None:
         num_normal_samples =  dataset.stats['normal_train.npy']
         num_event_samples = dataset.stats['event_train.npy']
     else:
-        num_normal_samples = num_event_samples = dataset.stats['normal_train.npy']
-        
+        num_normal_samples = dataset.stats['normal_train.npy']
+        num_event_samples = dataset.stats['normal_train.npy']
+
     # Generate normal train data
     print(f"Generating {num_normal_samples} normal train and validation data") 
     normal = sample_normal(flow_module, num_normal_samples, save=dataset.root / 'normal_sampled.npy')

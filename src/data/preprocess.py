@@ -2,13 +2,13 @@ import sys
 sys.path.append('src')
 
 import numpy as np
-from utils import save_json, save_np
 from base import CustomDataset, split_data
 from miniboone import MiniBoone
 from power import Power
 from gas import Gas
 from hepmass import Hepmass
 from bsds300 import BSDS300Dataset
+import utils
 
 def select_variable(data):
     corr = np.abs(np.corrcoef(data.T))
@@ -71,8 +71,8 @@ def save_splits(dataset: CustomDataset):
     train_event = train_event[train_event[:, xi] > threshold_unnormalized]
     test_normal = test[test[:, xi] <= threshold_unnormalized]
     test_event = test[test[:, xi] > threshold_unnormalized]
-    save_np(dataset.root / 'normal_train_unnormalized.npy', train_normal)
-    save_np(dataset.root / 'event_train_unnormalized.npy', train_event)
+    utils.save_np(dataset.root / 'normal_train_unnormalized.npy', train_normal)
+    utils.save_np(dataset.root / 'event_train_unnormalized.npy', train_event)
 
     # 5. Normalize data
     train_normal, mu, std = normalize(train_normal)
@@ -92,21 +92,21 @@ def save_splits(dataset: CustomDataset):
     
     # 7. Save all datasplits
     # Train splits
-    save_np(dataset.root / '_train.npy', train_all)
-    save_np(dataset.root / 'normal_train.npy', train_normal)
-    save_np(dataset.root / 'event_train.npy', train_event)
+    utils.save_np(dataset.root / '_train.npy', train_all)
+    utils.save_np(dataset.root / 'normal_train.npy', train_normal)
+    utils.save_np(dataset.root / 'event_train.npy', train_event)
     
     # Validation splits
-    save_np(dataset.root / '_val.npy', val_all)
-    save_np(dataset.root / 'val.npy', val)
+    utils.save_np(dataset.root / '_val.npy', val_all)
+    utils.save_np(dataset.root / 'val.npy', val)
     # save_np(dataset.root / 'normal_val.npy', normal_val)
     # save_np(dataset.root / 'event_val.npy', event_val)
     
     # Test splits
-    save_np(dataset.root / '_test.npy', test_all)
-    save_np(dataset.root / 'test.npy', test)
-    save_np(dataset.root / 'test_normal.npy', test_normal)
-    save_np(dataset.root / 'test_event.npy', test_event)
+    utils.save_np(dataset.root / '_test.npy', test_all)
+    utils.save_np(dataset.root / 'test.npy', test)
+    utils.save_np(dataset.root / 'test_normal.npy', test_normal)
+    utils.save_np(dataset.root / 'test_event.npy', test_event)
 
     # 7. Save stats of splits
     stats = {
@@ -128,10 +128,12 @@ def save_splits(dataset: CustomDataset):
         '_threshold': _threshold,
         'weight': compute_event_weight(train_normal, train_event, xi, threshold)
     }
-    save_json(dataset.root / 'stats.json', stats)
+    utils.save_json(dataset.root / 'stats.json', stats)
     
 
 def main():
+    utils.seed_all(2023)
+    
     print('Preprocessing: MiniBoone')
     save_splits(MiniBoone())
     

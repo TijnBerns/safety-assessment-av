@@ -25,22 +25,29 @@ def compute_llh(version: str, true: str, dataset: str) -> Dict[str, float]:
     evaluator = evaluate.Evaluator(dataset=dataset, version=version)
 
     # Load checkpoints
-    best, _ = evaluate.get_checkpoint(version)
+    best = evaluate.get_llh(version)
     true, _ = evaluate.get_checkpoint(true)
     true = evaluate.get_best_checkpoint(true)
-
+    
     # Initialize list for storing results
     mse = np.zeros((len(best), 3))
     llh = np.zeros_like(mse)
     llr = np.zeros_like(mse)
 
     # Compute log likelihood ratios
-    for i, checkpoint in enumerate(best):
-        print(f'Evaluating {checkpoint}')
-        llh[i] = evaluator.compute_llh(checkpoint)
-        mse[i] = evaluator.compute_mse(true, checkpoint)
-        llr[i] = evaluator.compute_lr(true, checkpoint)
+    for i, llh_tensor in enumerate(best):
+        try:
+            print(f'Evaluating {llh_tensor}')
+            llh[i] = evaluator.compute_llh(llh_tensor)
+            mse[i] = evaluator.compute_mse(true, llh_tensor)
+            llr[i] = evaluator.compute_lr(true, llh_tensor)
+        except:
+            print('could not evaluate probably due to correpted file')
 
+    llh =  np.array(llh)[np.unique(np.nonzero(llh)[0])]
+    mse = np.array(mse)[np.unique(np.nonzero(mse)[0])]
+    llr = np.array(llr)[np.unique(np.nonzero(llr)[0])]
+            
     # Aggregate results
     mse_mean = np.mean(mse, axis=0)
     mse_std = np.std(mse, axis=0)
