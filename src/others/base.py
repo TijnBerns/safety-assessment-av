@@ -1,5 +1,6 @@
 import sys
 sys.path.append('src')
+sys.path.append('src/kde')
 
 import utils
 from src.kde.parameters import SharedParameters as params
@@ -62,7 +63,7 @@ def plot_overall_improvement_uv(path: Path, save: str):
         np.percentile(std, 2.5, axis=0),
         np.percentile(std, 97.5, axis=0),
         alpha=0.25,
-        label='95\% confidence interval'
+        label='$2.5-97.5$ percentile'
     )
     axs.legend()
     axs.set_xlabel('$x$')
@@ -80,7 +81,7 @@ def plot_overall_improvement_uv(path: Path, save: str):
         np.percentile(mse, 2.5, axis=0),
         np.percentile(mse, 97.5, axis=0),
         alpha=0.25,
-        label='95\% confidence interval'
+        label='$2.5-97.5$ percentile'
     )
     axs.set_xlabel('$x$')
     axs.set_ylabel('improved mse / baseline mse')
