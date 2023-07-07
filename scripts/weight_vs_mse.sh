@@ -3,8 +3,8 @@
 project_dir=.
 
 # Train on train-full with no speaker change symbols or ids
-source "$project_dir"/venv/bin/activate
-export DATAROOT='/scratch/tberns/data'
+# source "$project_dir"/venv/bin/activate
+# export DATAROOT='/scratch/tberns/data'
 
 # python src/flow/experiments/plot_weigth_vs_mse.py \
 #     --true=253784 \
@@ -31,7 +31,7 @@ python src/flow/experiments/plot_weigth_vs_mse.py \
     --versions=566855 --weights=0.7 \
     --versions=566856 --weights=0.8 \
     --versions=566858 --weights=0.9 \
-    --versions=566859 --weights=1.0 \
+    --versions=659062 --weights=1.0 \
     --dataset=gas
 
 

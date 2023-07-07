@@ -41,8 +41,8 @@ def compute_llh(version: str, true: str, dataset: str) -> Dict[str, float]:
             llh[i] = evaluator.compute_llh(llh_tensor)
             mse[i] = evaluator.compute_mse(true, llh_tensor)
             llr[i] = evaluator.compute_lr(true, llh_tensor)
-        except:
-            print('could not evaluate probably due to correpted file')
+        except Exception as e:
+            print(f'Could not evaluate probably due to correpted file.\n{e}')
 
     llh =  np.array(llh)[np.unique(np.nonzero(llh)[0])]
     mse = np.array(mse)[np.unique(np.nonzero(mse)[0])]

@@ -73,12 +73,12 @@ def get_checkpoint(version: str) -> Tuple[List[Path], None]:
     Returns:
         Tuple[List[Path], None]: List of Paths to all checkpoints containing the keyword 'best'
     """
-    path = Path(f'/home/tberns/safety-assessment-av/lightning_logs/version_{version}/checkpoints')
+    path = Path(f'lightning_logs/version_{version}/checkpoints')
     best_checkpoint = list(path.rglob('*best.ckpt'))
     return best_checkpoint, None
 
 def get_llh(version: str) -> List[Path]:
-    path = Path(f'/home/tberns/safety-assessment-av/lightning_logs/version_{version}/checkpoints')
+    path = Path(f'lightning_logs/version_{version}/checkpoints')
     return list(path.rglob('*best.llh.pt'))
     
 
