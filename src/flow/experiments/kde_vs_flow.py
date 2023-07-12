@@ -56,7 +56,15 @@ def plot(path: str= 'kde_vs_flow_old_2.json'):
         axs[i][1].plot(mean['kde_eval_time'])
         axs[i][1].plot(mean['flow_eval_time'])
     plt.savefig('test')
-
+     
+def remove_outliers(pdf, data):
+    Q1 = np.percentile(pdf, 25, method='midpoint')
+    Q3 = np.percentile(pdf, 75, method='midpoint')
+    IQR = Q3 - Q1
+    lower = Q1 - 1.5 * IQR
+    upper = Q3 + 1.5 * IQR
+    mask = np.logical_and(pdf >= lower, pdf <= upper)
+    return pdf[mask], data[mask]
     
     
 def run_exp(true, dataset):
@@ -74,6 +82,7 @@ def run_exp(true, dataset):
         true = scipy.stats.gaussian_kde(train_full[:,:num_dim].T)
         test = true.resample(10_000).T
         true_pdf = true.logpdf(test.T)
+        true_pdf, test = remove_outliers(true_pdf, test)
 
         for num_samples in N_SAMPLES:
             

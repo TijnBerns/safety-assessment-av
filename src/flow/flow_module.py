@@ -21,10 +21,7 @@ from data.power import Power
 from data.gas import Gas
 import scipy.special
 
-# Finetune weight
-from ray import air, tune
-from ray.air import session
-from ray.tune.schedulers import ASHAScheduler
+
 
 def create_linear_transform(features):
     return transforms.CompositeTransform([
@@ -271,16 +268,12 @@ class FlowModuleWeighted(FlowModule):
         
         
 class FlowModuleTrainableWeight(FlowModule):
-    def __init__(self,  
-                 features: int,
-                 dataset: CustomDataset,
-                 args: Parameters, 
-                 stage: int=1,
-                 weight: float=1.0) -> None:
-        super().__init__(features=features, args=args, dataset=dataset, stage=stage, weight=weight)
+    def __init__(self, config) -> None:
+        # super().__init__(features=features, args=args, dataset=dataset, stage=stage, weight=weight)
+        super().__init__(features=config["features"], args=config["args"], dataset=config["dataset"], stage=config["stage"], weight=config["weight"])
         
         # self.event_weight = torchtorch.logit(torch.tensor(self.event_weight))
-        self.normal_dataloader = DataLoader(Gas(split='normal_sampled'), batch_size=args.batch_size, shuffle=False)
+        self.normal_dataloader = DataLoader(Gas(split='normal_sampled'), batch_size=self.batch_size, shuffle=False)
         self.event_weight = torch.nn.Parameter(torch.tensor(self.event_weight))
         # self.weight_optimizer = torch.optim.Adam([self.event_weight], lr=0.005)
     
@@ -302,7 +295,7 @@ class FlowModuleTrainableWeight(FlowModule):
         event = self.forward(batch[batch[:,self.xi] > self.threshold])
         
         loss, _ = self._compute_weighted_loss(non_event, event, self.event_weight)
-        log_density = torch.mean(torch.cat(non_event, event))
+        log_density = torch.mean(torch.cat((non_event, event)))
         
         self.train_mean_log_density(log_density)
         self.log("weighted_log_density", -loss, batch_size=self.batch_size)
@@ -311,6 +304,7 @@ class FlowModuleTrainableWeight(FlowModule):
         self.log("log_density", log_density, batch_size=self.batch_size, prog_bar=True)
         self.log('event', torch.mean(event))
         self.log('non_event', torch.mean(non_event))
+        self.log('event_weight', self.event_weight)
         return loss
     
     # def _compute_llh(self, dataloader):

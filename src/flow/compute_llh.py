@@ -26,7 +26,7 @@ def compute_llh(version: str, true: str, dataset: str) -> Dict[str, float]:
 
     # Load checkpoints
     best = evaluate.get_llh(version)
-    true, _ = evaluate.get_checkpoint(true)
+    true, _ = evaluate.get_pl_checkpoint(true)
     true = evaluate.get_best_checkpoint(true)
     
     # Initialize list for storing results

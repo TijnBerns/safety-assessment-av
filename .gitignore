@@ -4,6 +4,7 @@ notebooks/
 estimates*
 estimates/
 checkpoints
+ray_results
 lightning_logs
 logs/
 temp.py

@@ -63,8 +63,11 @@ def sample_event(flow_module: FlowModule, num_samples: int, threshold:float, xi:
     
     return sampled_data
 
+def get_ray_checkpoint(path: Path):
+    ckpts = list(path.rglob('*best.ckpt'))
+    return ckpts[-1]
 
-def get_checkpoint(version: str) -> Tuple[List[Path], None]:
+def get_pl_checkpoint(version: str) -> Tuple[List[Path], None]:
     """Loads the checkpoints of a given version
 
     Args:
@@ -74,8 +77,8 @@ def get_checkpoint(version: str) -> Tuple[List[Path], None]:
         Tuple[List[Path], None]: List of Paths to all checkpoints containing the keyword 'best'
     """
     path = Path(f'lightning_logs/version_{version}/checkpoints')
-    best_checkpoint = list(path.rglob('*best.ckpt'))
-    return best_checkpoint, None
+    ckpts = list(path.rglob('*best.ckpt'))
+    return ckpts, None
 
 def get_llh(version: str) -> List[Path]:
     path = Path(f'lightning_logs/version_{version}/checkpoints')
@@ -145,9 +148,14 @@ class Evaluator():
                                                         device=self.device, args=self.args, 
                                                         dataset=self.dataset, map_location="cpu").eval()
         except:
-            flow_module = FlowModuleTrainableWeight.load_from_checkpoint(checkpoint, features=self.features, 
-                                                        device=self.device, args=self.args, 
-                                                        dataset=self.dataset, map_location="cpu").eval()
+            config = {
+                "features": self.features, 
+                "dataset": self.dataset,
+                "args": self.args, 
+                "stage": 1,
+                "weight": 0.0
+            }
+            flow_module = FlowModuleTrainableWeight.load_from_checkpoint(checkpoint, config=config, map_location="cpu").eval()
         return flow_module.to(self.device)
     
     def _likelihood_ratio(self, true, other):
@@ -235,7 +243,7 @@ class Evaluator():
 def evaluate(version: str, dataset:str, test_set: str):
     utils.seed_all(2023)
     evaluator = Evaluator(dataset=dataset, version=version, test_set=test_set)
-    best, _ = get_checkpoint(version)
+    best, _ = get_pl_checkpoint(version)
     for checkpoint in tqdm(best):
         print(f'Evaluating {checkpoint}')
         evaluator.compute_llh_tensor(checkpoint)

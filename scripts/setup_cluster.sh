@@ -6,8 +6,12 @@ cd "$SCRIPT_DIR" || exit 1
 
 # make a directory on the ceph file system to store logs and checkpoints
 # and make a symlink to access it directly from the root of the project
-mkdir -p /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/checkpoints
-ln -sfn /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/checkpoints "$SCRIPT_DIR"/../checkpoints
+mkdir -p /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/ray_results/ray
+ln -sfn /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/ray_results/tmp/ray /tmp/ray
+
+
+mkdir -p /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/ray_results
+ln -sfn /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/ray_results "$SCRIPT_DIR"/../ray_results
 
 mkdir -p /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/lightning_logs
 ln -sfn /ceph/csedu-scratch/other/"$USER"/safety-assessment-av/lightning_logs "$SCRIPT_DIR"/../lightning_logs
@@ -65,5 +69,3 @@ srun -p csedu-prio -A cseduproject -q csedu-small -w cn47 rsync -a cn84:/scratch
 
 echo "### SETTING UP VIRTUAL ENVIRONMENT ON CN48 ###"
 srun -p csedu-prio -A cseduproject -q csedu-small -w cn48 rsync -a cn84:/scratch/tberns/ /scratch/tberns/
-
-

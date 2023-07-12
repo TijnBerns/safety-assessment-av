@@ -3,7 +3,7 @@ sys.path.append('src')
 
 import click
 import parameters
-from evaluate import get_checkpoint, get_best_checkpoint, sample_normal, sample_event
+from evaluate import get_pl_checkpoint, get_best_checkpoint, sample_normal, sample_event
 from flow_module import FlowModule
 from utils import set_device
 from scipy.stats import uniform
@@ -45,7 +45,7 @@ def sample(dataset:str, version: str, num_samples: int) -> Tuple[np.ndarray, np.
     features = dataset.data.shape[1]
     
     # Load checkpoint
-    best, _ = get_checkpoint(version)
+    best, _ = get_pl_checkpoint(version)
     best = get_best_checkpoint(best)
     flow_module = FlowModule.load_from_checkpoint(best, features=features, device=device, args=args, dataset=dataset, map_location=torch.device('cpu')).eval()
     
