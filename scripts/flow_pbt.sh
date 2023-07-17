@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --account=cseduproject
 #SBATCH --partition=csedu
+#SBATCH --nodelist=cn47
 #SBATCH --qos=csedu-large
 #SBATCH --gres=gpu:2
 #SBATCH --mem=20G

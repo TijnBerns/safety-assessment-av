@@ -26,8 +26,9 @@ from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 
 from ray.train.lightning import LightningTrainer, LightningConfigBuilder
 
-os.environ["RAY_TMPDIR"] = "/ceph/csedu-scratch/other/tberns/tmp"
-ray.init(num_cpus=4, num_gpus=2, _temp_dir='/ceph/csedu-scratch/other/tberns/tmp')
+tmp_dir = '/ceph/csedu-scratch/other/tberns/tmp'
+os.environ["RAY_TMPDIR"] = tmp_dir
+ray.init(num_cpus=4, num_gpus=2, _temp_dir=tmp_dir)
 
 
 @click.command()
@@ -64,7 +65,7 @@ def train_pb(dataset:str, dataset_type: str):
     dm = DataModule()
 
     # Number of samples from parameter space
-    num_samples = 5
+    num_samples = 4
     config = {
         "features": features, 
         "dataset": dataset(split="normal_sampled"),
@@ -106,7 +107,8 @@ def train_pb(dataset:str, dataset_type: str):
     )
     
     scheduler = PopulationBasedTraining(
-        perturbation_interval=1,
+        perturbation_interval=2,
+        resample_probability=0.15,
         time_attr='training_iteration',
         hyperparam_mutations={"lightning_config": mutations_config},
     )
