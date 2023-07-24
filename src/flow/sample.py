@@ -56,6 +56,7 @@ def sample(dataset:str, version: str, num_samples: int) -> Tuple[np.ndarray, np.
     else:
         num_normal_samples = dataset.stats['normal_train.npy']
         num_event_samples = dataset.stats['normal_train.npy']
+    num_test_samples = dataset.stats['test.npy']
 
     # Generate normal train data
     print(f"Generating {num_normal_samples} normal train and validation data") 
@@ -67,9 +68,10 @@ def sample(dataset:str, version: str, num_samples: int) -> Tuple[np.ndarray, np.
     event = sample_event(flow_module, num_event_samples, threshold, xi, save=dataset.root / 'event_sampled.npy')
     
     # Generate test data
-    print(f"Generating {200_000} test samples")
-    test = sample_normal(flow_module, num_samples=200_000,  save=dataset.root / 'test_sampled.npy' )
+    print(f"Generating {num_test_samples} test samples")
+    test = sample_normal(flow_module, num_samples=num_test_samples,  save=dataset.root / 'test_sampled.npy' )
     return normal, event, val, test
+
         
 
 if __name__ == "__main__":

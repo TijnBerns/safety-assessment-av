@@ -11,6 +11,7 @@ from data.base import CustomDataset, split_data
 class MiniBoone(CustomDataset):
     def __init__(self, split='data') -> None:
         super().__init__(Path(os.environ['DATAROOT']) / 'miniboone', split)
+        self.dataset_str = "miniboone"
 
         
     def load_data(self):

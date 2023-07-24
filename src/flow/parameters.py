@@ -42,8 +42,7 @@ class Parameters():
     apply_unconditional_transform = True
     # Logging interval used by pytorch lightning trainer
     logging_interval = 50
-    # Number of flow steps to freeze
-    # TODO:
+
 
 
 @dataclass

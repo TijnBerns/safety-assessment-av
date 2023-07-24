@@ -11,6 +11,7 @@ import pandas as pd
 class Power(CustomDataset):
     def __init__(self, split=None) -> None:
         super().__init__(Path(os.environ['DATAROOT']) / 'power', split)
+        self.dataset_str = "power"
         
     def load_data(self):
         # Following https://github.com/gpapamak/maf/blob/master/datasets/power.py

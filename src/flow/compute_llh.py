@@ -19,8 +19,11 @@ def write_results(path: Path, row) -> None:
     utils.save_csv(path, df)
     return
 
-
-def compute_llh(version: str, true: str, dataset: str) -> Dict[str, float]:
+@click.command()
+@click.option('--version', type=str)
+@click.option('--true', type=str)
+@click.option('--dataset', default='gas')
+def main(version: str, true: str, dataset: str) -> Dict[str, float]:
     utils.seed_all(2023)
     evaluator = evaluate.Evaluator(dataset=dataset, version=version)
 
@@ -28,6 +31,10 @@ def compute_llh(version: str, true: str, dataset: str) -> Dict[str, float]:
     best = evaluate.get_llh(version)
     true, _ = evaluate.get_pl_checkpoint(true)
     true = evaluate.get_best_checkpoint(true)
+    
+    compute_metrics(evaluator, true, best, version)
+    
+def compute_metrics(evaluator, true, best, version):
     
     # Initialize list for storing results
     mse = np.zeros((len(best), 3))
@@ -78,13 +85,6 @@ def compute_llh(version: str, true: str, dataset: str) -> Dict[str, float]:
 
     return row
 
-
-@click.command()
-@click.option('--version', type=str)
-@click.option('--true', type=str)
-@click.option('--dataset', default='hepmass')
-def main(version: str, true: str, dataset: str):
-    compute_llh(version, true, dataset)
 
 
 if __name__ == "__main__":

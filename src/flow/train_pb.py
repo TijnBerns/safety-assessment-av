@@ -26,10 +26,17 @@ from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 
 from ray.train.lightning import LightningTrainer, LightningConfigBuilder
 
-tmp_dir = '/ceph/csedu-scratch/other/tberns/tmp'
-os.environ["RAY_TMPDIR"] = tmp_dir
-ray.init(num_cpus=4, num_gpus=2, _temp_dir=tmp_dir)
 
+def get_true_version(dataset_str):
+    if dataset_str == 'gas':
+        return "253784"
+    if dataset_str == 'power':
+        return "270632"
+    if dataset_str == 'hepmass':
+        return "270635"
+    if dataset_str == 'miniboone':
+        return "320617"
+    return ValueError
 
 @click.command()
 @click.option('--dataset', type=str, default='gas')
@@ -44,8 +51,7 @@ def train_pb(dataset:str, dataset_type: str):
     dataset = parameters.get_dataset(dataset)
     normal_train, _, val = train.create_data_loaders(dataset, args.batch_size, dataset_type)
     features = normal_train.dataset.data.shape[1]
-    print(f"\n\n!!!!!!!!!!!{normal_train.dataset.data.shape}!!!!!!!!!!!!!!!!\n\n")
-    
+    print(f"\n\n!!!!!!!!!!! DATASET SIZE {normal_train.dataset.data.shape}!!!!!!!!!!!!!!!!\n\n")
     # Get device
     device, version = utils.set_device()
     
@@ -108,7 +114,6 @@ def train_pb(dataset:str, dataset_type: str):
     
     scheduler = PopulationBasedTraining(
         perturbation_interval=2,
-        resample_probability=0.15,
         time_attr='training_iteration',
         hyperparam_mutations={"lightning_config": mutations_config},
     )
@@ -136,16 +141,42 @@ def train_pb(dataset:str, dataset_type: str):
                 checkpoint_score_order="max",
             ),
             storage_path="/home/tberns/safety-assessment-av/ray_results",
-            name="gas",
+            name=dataset_str,
         ),
     )
     results = tuner.fit()
+
+    # Load best checkpoint
     best_result = results.get_best_result(metric="val_log_density", mode="max")
-
-
     evaluator = evaluate.Evaluator(dataset=dataset_str, version=version, test_set='all')
     best_checkpoint = evaluate.get_ray_checkpoint(Path(best_result.path))
-    evaluator.compute_llh_tensor(best_checkpoint)
+    
+    # Compute LLH tensor
+    _, llh_tensor_path = evaluator.compute_llh_tensor(best_checkpoint)
+    llh_tensor_path = Path(llh_tensor_path)
+    
+    # Compute LLH and MSE
+    true_version = get_true_version(dataset_str)
+    true_path, _ = evaluate.get_pl_checkpoint(true_version)
+    true_path = evaluate.get_best_checkpoint(true_path)
+    compute_llh.compute_metrics(evaluator, true_path, [llh_tensor_path], version)
+    print("LLH: ", evaluator.compute_llh(llh_tensor_path))
+    print("MSE: ", evaluator.compute_mse(true_path, llh_tensor_path))
+    
+    # Copy checkpoint and llh tensor to lightning_logs
+    dest = Path('lightning_logs', *best_checkpoint.parts[-3:]).parent
+    dest.mkdir(parents='True')
+    best_checkpoint.rename(dest / best_checkpoint.name)
+    llh_tensor_path.rename(dest / llh_tensor_path.name)
+    
 
 if __name__ == "__main__":
+    tmp_dir = '/ceph/csedu-scratch/other/tberns/tmp'
+    num_cpus = 4
+    num_gpus = 2
+
+    os.environ["RAY_TMPDIR"] = tmp_dir
+    # os.environ["TUNE_MAX_PENDING_TRIALS_PG"] = str(num_cpus)
+    ray.init(num_cpus=num_cpus, num_gpus=num_gpus, _temp_dir=tmp_dir)
+    
     train_pb()

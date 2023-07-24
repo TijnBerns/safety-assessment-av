@@ -169,8 +169,8 @@ class Evaluator():
         Q1 = np.percentile(true, 25, method='midpoint')
         Q3 = np.percentile(true, 75, method='midpoint')
         IQR = Q3 - Q1
-        lower = Q1 - 1.5 * IQR
-        upper = Q3 + 1.5 * IQR
+        lower = Q1 - 4 * IQR
+        upper = Q3 + 4 * IQR
         mask = torch.logical_and(true >= lower, true <= upper)
         
         # Also remove outliers from dataset
@@ -190,13 +190,16 @@ class Evaluator():
         llh = flow_module.compute_llh(self.test)
         
         # Save log-likelihood tensor
-        torch.save(llh, Path(checkpoint).parent / (checkpoint.name[:-4] + "llh.pt"))
-
-        # Split in all, non-event, and event
-        llh_all, llh_non_event, llh_event = self._split_llh(llh, self.all)
+        path = Path(checkpoint).parent / (checkpoint.name[:-4] + "llh.pt")
+        torch.save(llh, path)
         
-        # Return mean log-likelihood on non-event and event data
-        return torch.mean(llh_all), torch.mean(llh_non_event), torch.mean(llh_event)
+        return llh, path
+
+        # # Split in all, non-event, and event
+        # llh_all, llh_non_event, llh_event = self._split_llh(llh, self.all)
+        
+        # # Return mean log-likelihood on non-event and event data
+        # return torch.mean(llh_all), torch.mean(llh_non_event), torch.mean(llh_event)
     
     def compute_llh(self, llh_estimate: Path):
         # Load llh tensor
@@ -251,8 +254,8 @@ def evaluate(version: str, dataset:str, test_set: str):
 
 @click.command()
 @click.option('--version', type=str)
-@click.option('--dataset', default='hepmass')
-@click.option('--test_set', default='all', help='Whether to evaluate on test data normalized using all data or normal data only. Choices: [normal, all]')
+@click.option('--dataset', default='gas')
+@click.option('--test_set', default='sampled', help='Whether to evaluate on test data normalized using all data or normal data only. Choices: [normal, all]')
 def main(version: str, dataset: str, test_set: str):
     evaluate(version=version, dataset=dataset, test_set=test_set)
 

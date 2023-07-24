@@ -10,6 +10,8 @@ import pandas as pd
 class Gas(CustomDataset):
     def __init__(self, split=None) -> None:
         super().__init__(Path(os.environ['DATAROOT']) / 'gas', split)
+        self.dataset_str = "gas"
+        
         
     def load_data(self):
         # Following https://github.com/gpapamak/maf/blob/master/datasets/gas.py
