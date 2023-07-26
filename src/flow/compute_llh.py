@@ -19,10 +19,10 @@ def write_results(path: Path, row) -> None:
     utils.save_csv(path, df)
     return
 
-@click.command()
-@click.option('--version', type=str)
-@click.option('--true', type=str)
-@click.option('--dataset', default='gas')
+# @click.command()
+# @click.option('--version', type=str)
+# @click.option('--true', type=str)
+# @click.option('--dataset', default='gas')
 def main(version: str, true: str, dataset: str) -> Dict[str, float]:
     utils.seed_all(2023)
     evaluator = evaluate.Evaluator(dataset=dataset, version=version)
@@ -32,7 +32,7 @@ def main(version: str, true: str, dataset: str) -> Dict[str, float]:
     true, _ = evaluate.get_pl_checkpoint(true)
     true = evaluate.get_best_checkpoint(true)
     
-    compute_metrics(evaluator, true, best, version)
+    return compute_metrics(evaluator, true, best, version)
     
 def compute_metrics(evaluator, true, best, version):
     
@@ -79,7 +79,6 @@ def compute_metrics(evaluator, true, best, version):
     }]
 
     print(row)
-
     # Write results to file
     write_results(path=Path('results.csv'), row=row)
 

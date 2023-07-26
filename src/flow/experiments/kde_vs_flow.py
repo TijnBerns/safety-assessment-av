@@ -40,8 +40,7 @@ def plot(path: str= 'kde_vs_flow_old_2.json'):
     data = utils.load_json(path)['data']
     df = pd.DataFrame(data)
     group = df.groupby(['num_samples'])
-    
-    
+
     num_dim = np.sort(df['num_dim'].unique())
     num_samples = np.sort(df['num_samples'].unique())
     
@@ -61,13 +60,13 @@ def remove_outliers(pdf, data):
     Q1 = np.percentile(pdf, 25, method='midpoint')
     Q3 = np.percentile(pdf, 75, method='midpoint')
     IQR = Q3 - Q1
-    lower = Q1 - 1.5 * IQR
-    upper = Q3 + 1.5 * IQR
+    lower = Q1 - 4 * IQR
+    upper = Q3 + 4 * IQR
     mask = np.logical_and(pdf >= lower, pdf <= upper)
     return pdf[mask], data[mask]
     
     
-def run_exp(true, dataset):
+def run_exp(dataset):
     device, _ = utils.set_device()
     
     # Get arguments and dataset
@@ -140,12 +139,11 @@ def run_exp(true, dataset):
     
 
 @click.command()
-@click.option('--true',type=str, default='')
 @click.option('--dataset',type=str, default='gas')
 @click.option('--todo', default='run')
-def main(true: str, dataset: str, todo: str):
+def main(dataset: str, todo: str):
     if todo == 'run':
-        run_exp(true, dataset)
+        run_exp(dataset)
     else:
         plot()
  

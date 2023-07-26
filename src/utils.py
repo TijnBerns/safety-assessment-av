@@ -34,6 +34,7 @@ import random
 #         return False
 
 # Constants
+FIGSIZE_1_1 = (6,2)
 FIGSIZE_1_2 = (3., 1.8)
 FIGSIZE_1_3 = (2.0, 2.0)
 

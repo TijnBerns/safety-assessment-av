@@ -104,7 +104,7 @@ def get_best_checkpoint(checkpoints: List[Path]):
 
 
 class Evaluator():
-    def __init__(self, dataset: str, version: str, test_set: str='all') -> None:
+    def __init__(self, dataset: str, version: str="_", test_set: str='all') -> None:
         # Set device
         device, _ = utils.set_device()
         self.device = device
