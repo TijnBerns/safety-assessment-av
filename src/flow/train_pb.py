@@ -5,7 +5,7 @@ import os
 
 import utils
 import parameters
-from flow_module import FlowModule, FlowModuleWeighted
+from flow_module import FlowModule, FlowModuleWeightedConfig
 import compute_llh
 
 import click
@@ -96,7 +96,7 @@ def train_pb(dataset:str, dataset_type: str, num_cpus: int, num_gpus: int, stora
     pattern = "epoch_{epoch:04d}.step_{step:09d}.log_density_{val_log_density:.2f}.best"
     lightning_config = (
         LightningConfigBuilder()
-        .module(cls=FlowModuleWeighted, config=config)
+        .module(cls=FlowModuleWeightedConfig, config=config)
         .trainer(
             max_steps=args.training_steps,
             inference_mode=False,

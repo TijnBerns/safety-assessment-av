@@ -4,7 +4,7 @@ sys.path.append('src/data')
 
 import utils
 import parameters
-from flow_module import FlowModule, FlowModuleFixedWeight
+from flow_module import FlowModule, FlowModuleWeighted
 
 import click
 import numpy as np
@@ -15,12 +15,15 @@ from torch.utils.data import DataLoader
 from data.base import CustomDataset
 import data.preprocess
 import evaluate
+from typing import Tuple
 
-def create_checkpointer(prefix:str=None):
-    if prefix is None:
-        pattern = "epoch_{epoch:04d}.step_{step:09d}.log_density_{val_log_density:.2f}"
-    else:
-        pattern = prefix + ".epoch_{epoch:04d}.step_{step:09d}.log_density_{val_log_density:.2f}"
+def create_checkpointer():
+    """Creates a checkpointer. That saves the top 50 models every 100 training steps.
+
+    Returns:
+        pytorch_lightning.callbacks.ModelCheckpoint: Checkpointer.
+    """
+    pattern = "epoch_{epoch:04d}.step_{step:09d}.log_density_{val_log_density:.2f}"
     ModelCheckpoint.CHECKPOINT_NAME_LAST = pattern + ".last"
     checkpointer = ModelCheckpoint(
         save_top_k=50,
@@ -37,42 +40,68 @@ def train_val_split(data, frac):
     split_idx = int(frac * len(data))
     return  data[:split_idx], data[split_idx:]
 
-def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str):
-    val = DataLoader(dataset(split='val'), shuffle=False, batch_size=batch_size, num_workers=2)
-    
+def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str) -> Tuple[DataLoader, DataLoader]:
+    """Creates train and val dataloaders corresponding to provedided dataset and dataset type
+
+    Args:
+        dataset (CustomDataset): Dataset
+        batch_size (int): Batch size of train an val dataloader
+        dataset_type (str): What data to use. Choices: all, normal, weighted, sampled_normal, or sampled_weighted.
+
+    Raises:
+        ValueError: Provided dataset type does not correspond to the choices listed above.
+
+    Returns:
+        Tuple[DataLoader, DataLoader]: _description_
+    """
+    # Use validation set normalized using all data
     if dataset_type == 'all':
         train = DataLoader(dataset(split='_train'), shuffle=True, batch_size=batch_size, num_workers=2)
         val = DataLoader(dataset(split='_val'), shuffle=False, batch_size=batch_size, num_workers=2)
         return train, val
     
-    elif dataset_type == 'normal':
+    # Next two options use validation set normalized using normal data
+    val = DataLoader(dataset(split='val'), shuffle=False, batch_size=batch_size, num_workers=2)
+    if dataset_type == 'normal':
         train_normal = DataLoader(dataset(split='normal_train'), shuffle=True, batch_size=batch_size, num_workers=2)
-        train_event = DataLoader(dataset(split='event_train'), shuffle=True, batch_size=batch_size, num_workers=2)
-        return train_normal, train_event, val
+        return train_normal, val
     
-    elif dataset_type == 'weighted' or dataset_type=='zero_weight':
+    elif dataset_type == 'weighted':
         normal = dataset(split='normal_train').data 
         event = dataset(split='event_train').data  
         train = DataLoader(np.concatenate((normal, event)), shuffle=True, batch_size=batch_size, num_workers=2)
         return train, val 
     
-    elif dataset_type == 'sampled_normal':
+    # Remaining options use sampled validation set
+    val = DataLoader(dataset(split='val_sampled'), shuffle=False, batch_size=batch_size, num_workers=2)
+    if dataset_type == 'sampled_normal':
         train_normal = DataLoader(dataset(split='normal_sampled'), shuffle=True, batch_size=batch_size, num_workers=2)
-        val = DataLoader(dataset(split='val_sampled'), shuffle=False, batch_size=batch_size, num_workers=2)
-        return train_normal, train_event, val
+        return train_normal, val
     
-    elif dataset_type == 'sampled_zero_weight' or dataset_type == 'sampled_weighted':
+    elif dataset_type == 'sampled_weighted':
         normal = dataset(split='normal_sampled').data 
         event = dataset(split='event_sampled').data  
         train = DataLoader(np.concatenate((normal, event)), shuffle=True, batch_size=batch_size, num_workers=2)
-        val = DataLoader(dataset(split='val_sampled'), shuffle=False, batch_size=batch_size, num_workers=2)
         return train, val 
-    else: 
-        raise ValueError
+    
+    raise ValueError(f"expected dataset_type one of: all, normal, weighted, sampled_normal, or sampled_weighted but got {dataset_type}")
 
-def create_module(dataset: CustomDataset, features: int, dataset_type: str, weight:float, args: parameters.Parameters, stage: int):
+def create_module(dataset: CustomDataset, features: int, dataset_type: str, weight:float, args: parameters.Parameters, stage: int) -> FlowModule:
+    """Creates flow module.
+
+    Args:
+        dataset (CustomDataset): Dataset
+        features (int): Number of variables/features of data.
+        dataset_type (str): The dataset type that is used.
+        weight (float): Weight to use during training in case datasetype is either 'weighted' or 'sampled_weighted'.
+        args (parameters.Parameters): Parameter dataclass containing hyperparmaters.
+        stage (int): Stage of the flow module. If 1 the model trains with a cosine anealing lr scheduler, otherwise not.
+
+    Returns:
+        FlowModule: Pytorch lighting flow module
+    """
     if dataset_type in ['weighted', 'sampled_weighted']:
-        return FlowModuleFixedWeight(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
+        return FlowModuleWeighted(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
     else:
         return FlowModule(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
    

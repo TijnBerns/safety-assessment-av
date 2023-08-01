@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Tuple
 import click
 from torch.utils.data import DataLoader
-from flow_module import FlowModule, FlowModuleWeighted
+from flow_module import FlowModule, FlowModuleWeightedConfig
 import matplotlib.pyplot as plt
 import parameters
 from utils import save_json
@@ -157,7 +157,7 @@ class Evaluator():
                 "stage": 1,
                 "weight": 0.0
             }
-            flow_module = FlowModuleWeighted.load_from_checkpoint(checkpoint, config=config, map_location="cpu").eval()
+            flow_module = FlowModuleWeightedConfig.load_from_checkpoint(checkpoint, config=config, map_location="cpu").eval()
         return flow_module.to(self.device)
     
     def _likelihood_ratio(self, true, other):
