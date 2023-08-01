@@ -236,7 +236,7 @@ class FlowModuleWeighted(FlowModule):
         non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
         event = self.forward(batch[batch[:,self.xi] > self.threshold])
         
-        loss, _ = self._compute_weighted_loss(non_event, event, self.weight)
+        loss = self._compute_weighted_loss(non_event, event)
         log_density = torch.mean(torch.cat((non_event, event)))
         
         self.train_mean_log_density(log_density)
@@ -251,9 +251,9 @@ class FlowModuleWeighted(FlowModule):
     
         
         
-class FlowModuleWeightedConfig(FlowModuleWeighted):
+class FlowModuleTrainableWeight(FlowModuleWeighted):
     def __init__(self, config: Dict[str, Any]) -> None:
-        """Initializes FlowModuleWeighted using a dictionary of paramters (used in population based training).
+        """Initializes FlowModuleWeighted using a dictionary of parameters (used in population based training).
 
         Args:
             config (Dict[str, Any]): Parameters used to initialize FlowModuleWeighted.

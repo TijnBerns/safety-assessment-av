@@ -5,7 +5,7 @@ import os
 
 import utils
 import parameters
-from flow_module import FlowModule, FlowModuleWeightedConfig
+from flow_module import FlowModule, FlowModuleTrainableWeight
 import compute_llh
 
 import click
@@ -63,10 +63,10 @@ def train_pb(dataset:str, dataset_type: str, num_cpus: int, num_gpus: int, stora
     # Construct data loaders
     args = parameters.get_parameters(dataset)
     dataset = parameters.get_dataset(dataset)
-    normal_train, _, val = train.create_data_loaders(dataset, args.batch_size, dataset_type)
-    features = normal_train.dataset.data.shape[1]
+    train_loader, val = train.create_data_loaders(dataset, args.batch_size, dataset_type)
+    features = train_loader.dataset.data.shape[1]
     
-    print(f"\n\n!!!!!!!!!!! DATASET SIZE {normal_train.dataset.data.shape}!!!!!!!!!!!!!!!!\n\n")
+    print(f"\n\n!!!!!!!!!!! DATASET SIZE {train_loader.dataset.data.shape}!!!!!!!!!!!!!!!!\n\n")
     # Get device
     device, version = utils.set_device()
     
@@ -76,7 +76,7 @@ def train_pb(dataset:str, dataset_type: str, num_cpus: int, num_gpus: int, stora
             super().__init__()
             
         def train_dataloader(self):
-            return normal_train
+            return train_loader
 
         def val_dataloader(self):
             return val
@@ -96,7 +96,7 @@ def train_pb(dataset:str, dataset_type: str, num_cpus: int, num_gpus: int, stora
     pattern = "epoch_{epoch:04d}.step_{step:09d}.log_density_{val_log_density:.2f}.best"
     lightning_config = (
         LightningConfigBuilder()
-        .module(cls=FlowModuleWeightedConfig, config=config)
+        .module(cls=FlowModuleTrainableWeight, config=config)
         .trainer(
             max_steps=args.training_steps,
             inference_mode=False,
@@ -145,8 +145,6 @@ def train_pb(dataset:str, dataset_type: str, num_cpus: int, num_gpus: int, stora
         lightning_trainer,
         param_space={"lightning_config": lightning_config},
         tune_config=tune.TuneConfig(
-            metric="val_log_density",
-            mode="max",
             num_samples=num_samples,
             scheduler=scheduler,
         ),

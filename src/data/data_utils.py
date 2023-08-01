@@ -5,13 +5,30 @@ from scipy.optimize import fsolve
 from itertools import product 
 
 
-def compute_p_edge(data, threshold, dim=-1):
+def compute_p_edge(data: np.ndarray, threshold: float, dim:int=-1) -> float:
     """Computes the fraction of edge data in the provided samples. 
     This fraction is based on the number of samples where x is larger than c along dimension dim
+
+    Args:
+        data (np.ndarray): Data of which the fraction of event data is computed
+        threshold (float): Threshold that determines whether an observation is an event or not.
+        dim (int, optional): Number of the variable that determines whether an observation is an event or not. Defaults to -1.
+
+    Returns:
+        float: _description_
     """
     return len(data[data[:, dim] > threshold]) / len(data)
 
-def determine_threshold(frac_edge: float, distribution=scipy.stats.norm()):
+def determine_threshold(frac_edge: float, distribution:scipy.stats.rv_continuous=scipy.stats.norm()) -> float:
+    """Computes the threshold such that frac_edge observations are events for the provedided distribution
+
+    Args:
+        frac_edge (float): _description_
+        distribution (scipy.stats.rv_continuous, optional): Scipy stats distribution. Defaults to scipy.stats.norm().
+
+    Returns:
+        float: Computed threshold.
+    """
     assert frac_edge > 0 and frac_edge < 1
     try:
         return determine_threshold_analytical(frac_edge, distribution)
