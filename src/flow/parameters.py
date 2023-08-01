@@ -18,7 +18,7 @@ class Parameters():
     # The batch size
     batch_size = 512
     # The number of training steps in both training stages
-    training_steps = 100000
+    training_steps = 100_000
     # The learning rate used during both training stages
     learning_rate = 0.0005
     # The probability of observing an event in the normal data

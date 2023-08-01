@@ -11,7 +11,6 @@ from collections import Counter
 class Hepmass(CustomDataset):
     def __init__(self, split=None) -> None:
         super().__init__(Path(os.environ['DATAROOT']) / 'hepmass', split)
-        self.dataset_str = "hepmass"
     
     def load_data(self):
         # Following https://github.com/bayesiains/nsf/blob/master/data/hepmass.py

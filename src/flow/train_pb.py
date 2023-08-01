@@ -5,7 +5,8 @@ import os
 
 import utils
 import parameters
-from flow_module import FlowModule, FlowModuleTrainableWeight
+from flow_module import FlowModule, FlowModuleWeighted
+import compute_llh
 
 import click
 import numpy as np
@@ -39,9 +40,22 @@ def get_true_version(dataset_str):
     return ValueError
 
 @click.command()
-@click.option('--dataset', type=str, default='gas')
-@click.option('--dataset_type', type=str, default='sampled_weighted') 
-def train_pb(dataset:str, dataset_type: str):    
+@click.option('--dataset', type=str)
+@click.option('--dataset_type', type=str) 
+@click.option('--num_cpus', type=int)
+@click.option('--num_gpus', type=int)
+@click.option('--num_samples', type=int, default=4)
+@click.option('--storage_path', type=str, default='/home/tberns/safety-assessment-av/ray_results')
+def train_pb(dataset:str, dataset_type: str, num_cpus: int, num_gpus: int, storage_path: str, num_samples:int):    
+    # Set environment variables
+    tmp_dir = os.environ["TMPDIR"]
+    os.environ["RAY_TMPDIR"] = tmp_dir
+    
+    # Initialize ray
+    if ray.is_initialized():
+        ray.shutdown()
+    ray.init(num_cpus=num_cpus, num_gpus=num_gpus, _temp_dir=tmp_dir)
+    
     # Set seeds for reproducibility 
     utils.seed_all(2023)
     dataset_str = dataset
@@ -51,6 +65,7 @@ def train_pb(dataset:str, dataset_type: str):
     dataset = parameters.get_dataset(dataset)
     normal_train, _, val = train.create_data_loaders(dataset, args.batch_size, dataset_type)
     features = normal_train.dataset.data.shape[1]
+    
     print(f"\n\n!!!!!!!!!!! DATASET SIZE {normal_train.dataset.data.shape}!!!!!!!!!!!!!!!!\n\n")
     # Get device
     device, version = utils.set_device()
@@ -70,8 +85,6 @@ def train_pb(dataset:str, dataset_type: str):
             return None
     dm = DataModule()
 
-    # Number of samples from parameter space
-    num_samples = 4
     config = {
         "features": features, 
         "dataset": dataset(split="normal_sampled"),
@@ -83,7 +96,7 @@ def train_pb(dataset:str, dataset_type: str):
     pattern = "epoch_{epoch:04d}.step_{step:09d}.log_density_{val_log_density:.2f}.best"
     lightning_config = (
         LightningConfigBuilder()
-        .module(cls=FlowModuleTrainableWeight, config=config)
+        .module(cls=FlowModuleWeighted, config=config)
         .trainer(
             max_steps=args.training_steps,
             inference_mode=False,
@@ -114,14 +127,17 @@ def train_pb(dataset:str, dataset_type: str):
     
     scheduler = PopulationBasedTraining(
         perturbation_interval=2,
+        mode='max',
+        metric='val_log_density',
         time_attr='training_iteration',
         hyperparam_mutations={"lightning_config": mutations_config},
     )
 
     # Define a base LightningTrainer without hyper-parameters for Tuner
+    num_workers = max(1, int(num_samples / num_cpus))
     lightning_trainer = LightningTrainer(
         scaling_config=ScalingConfig(
-            num_workers=1, use_gpu=device != 'cpu', resources_per_worker={"CPU": 1, "GPU": 0 if device == 'cpu' else 1}
+            num_workers=num_workers, use_gpu=device != 'cpu', resources_per_worker={"CPU": num_workers, "GPU": 0 if device == 'cpu' else 1}
         )
     )
 
@@ -140,7 +156,7 @@ def train_pb(dataset:str, dataset_type: str):
                 checkpoint_score_attribute="val_log_density",
                 checkpoint_score_order="max",
             ),
-            storage_path="/home/tberns/safety-assessment-av/ray_results",
+            storage_path=storage_path,
             name=dataset_str,
         ),
     )
@@ -150,6 +166,7 @@ def train_pb(dataset:str, dataset_type: str):
     best_result = results.get_best_result(metric="val_log_density", mode="max")
     evaluator = evaluate.Evaluator(dataset=dataset_str, version=version, test_set='all')
     best_checkpoint = evaluate.get_ray_checkpoint(Path(best_result.path))
+    best_checkpoint = evaluate.get_best_checkpoint(best_checkpoint)
     
     # Compute LLH tensor
     _, llh_tensor_path = evaluator.compute_llh_tensor(best_checkpoint)
@@ -160,23 +177,13 @@ def train_pb(dataset:str, dataset_type: str):
     true_path, _ = evaluate.get_pl_checkpoint(true_version)
     true_path = evaluate.get_best_checkpoint(true_path)
     compute_llh.compute_metrics(evaluator, true_path, [llh_tensor_path], version)
-    print("LLH: ", evaluator.compute_llh(llh_tensor_path))
-    print("MSE: ", evaluator.compute_mse(true_path, llh_tensor_path))
-    
-    # Copy checkpoint and llh tensor to lightning_logs
-    dest = Path('lightning_logs', *best_checkpoint.parts[-3:]).parent
-    dest.mkdir(parents='True')
-    best_checkpoint.rename(dest / best_checkpoint.name)
-    llh_tensor_path.rename(dest / llh_tensor_path.name)
+
+    # # Copy checkpoint and llh tensor to lightning_logs
+    # dest = Path('lightning_logs', *best_checkpoint.parts[-3:]).parent
+    # dest.mkdir(parents='True')
+    # best_checkpoint.rename(dest / best_checkpoint.name)
+    # llh_tensor_path.rename(dest / llh_tensor_path.name)
     
 
 if __name__ == "__main__":
-    tmp_dir = '/ceph/csedu-scratch/other/tberns/tmp'
-    num_cpus = 4
-    num_gpus = 2
-
-    os.environ["RAY_TMPDIR"] = tmp_dir
-    # os.environ["TUNE_MAX_PENDING_TRIALS_PG"] = str(num_cpus)
-    ray.init(num_cpus=num_cpus, num_gpus=num_gpus, _temp_dir=tmp_dir)
-    
     train_pb()

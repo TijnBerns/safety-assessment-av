@@ -28,7 +28,7 @@ from pathlib import Path
 
 N_DIM = list(range(2,8))
 N_SAMPLES = [100, 1000, 10_000, 100_000]
-N_MODELS = 5
+N_MODELS = 12
 
 
 
@@ -66,7 +66,8 @@ def remove_outliers(pdf, data):
     return pdf[mask], data[mask]
     
     
-def run_exp(dataset):
+def run_exp(dataset, seed):
+    utils.seed_all(seed)
     device, _ = utils.set_device()
     
     # Get arguments and dataset
@@ -113,8 +114,11 @@ def run_exp(dataset):
                                      inference_mode=False,
                                      callbacks=[EarlyStopping(monitor="log_density", mode="max",  min_delta=0.00, patience=3,)],
                                      enable_checkpointing=False,
+                                     logger=False,
                                      log_every_n_steps=args.logging_interval,
-                                     accelerator=device)
+                                     accelerator=device,
+                                     default_root_dir='_logs_tmp',
+                                     )
                 
                 # Fit flow
                 start = datetime.now()
@@ -133,23 +137,21 @@ def run_exp(dataset):
                 res['flow_mse'] = mse(true_pdf, flow_pdf)
                     
                 results.append(res)
-                utils.save_json(path=Path('kde_vs_flow.json'), data={'data':results})
+                utils.save_json(path=Path(f'kde_vs_flow_{seed}.json'), data={'data':results})
                 
                 print(res)
     
 
 @click.command()
+@click.option('--seed', type=int, default=2023)
 @click.option('--dataset',type=str, default='gas')
 @click.option('--todo', default='run')
-def main(dataset: str, todo: str):
+def main(dataset: str, todo: str, seed: int):
     if todo == 'run':
-        run_exp(dataset)
+        run_exp(dataset, seed)
     else:
         plot()
  
-                
-            
-
 if __name__ =='__main__': 
     main()
     

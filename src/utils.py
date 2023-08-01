@@ -37,7 +37,7 @@ import random
 FIGSIZE_1_1 = (6,2)
 FIGSIZE_1_2 = (3., 1.8)
 FIGSIZE_1_3 = (2.0, 2.0)
-
+LIGHTNING_LOGS = '/scratch/tberns/lightning_logs'
 
 def seed_all(seed: int):
     torch.manual_seed(seed) 

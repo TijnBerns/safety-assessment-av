@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Tuple
 import click
 from torch.utils.data import DataLoader
-from flow_module import FlowModule, FlowModuleTrainableWeight
+from flow_module import FlowModule, FlowModuleWeighted
 import matplotlib.pyplot as plt
 import parameters
 from utils import save_json
@@ -19,6 +19,8 @@ from typing import List, Union
 from tqdm import tqdm
 import data.base
 import torch
+
+from utils import LIGHTNING_LOGS
 
 def sample_normal(flow_module: FlowModule, num_samples: int, save: str= None):
     """Sample normal data from a flow module
@@ -65,7 +67,7 @@ def sample_event(flow_module: FlowModule, num_samples: int, threshold:float, xi:
 
 def get_ray_checkpoint(path: Path):
     ckpts = list(path.rglob('*best.ckpt'))
-    return ckpts[-1]
+    return ckpts
 
 def get_pl_checkpoint(version: str) -> Tuple[List[Path], None]:
     """Loads the checkpoints of a given version
@@ -76,12 +78,12 @@ def get_pl_checkpoint(version: str) -> Tuple[List[Path], None]:
     Returns:
         Tuple[List[Path], None]: List of Paths to all checkpoints containing the keyword 'best'
     """
-    path = Path(f'lightning_logs/version_{version}/checkpoints')
+    path = Path(f'{LIGHTNING_LOGS}/version_{version}/checkpoints')
     ckpts = list(path.rglob('*best.ckpt'))
     return ckpts, None
 
 def get_llh(version: str) -> List[Path]:
-    path = Path(f'lightning_logs/version_{version}/checkpoints')
+    path = Path(f'{LIGHTNING_LOGS}/version_{version}/checkpoints')
     return list(path.rglob('*best.llh.pt'))
     
 
@@ -155,7 +157,7 @@ class Evaluator():
                 "stage": 1,
                 "weight": 0.0
             }
-            flow_module = FlowModuleTrainableWeight.load_from_checkpoint(checkpoint, config=config, map_location="cpu").eval()
+            flow_module = FlowModuleWeighted.load_from_checkpoint(checkpoint, config=config, map_location="cpu").eval()
         return flow_module.to(self.device)
     
     def _likelihood_ratio(self, true, other):
@@ -184,7 +186,7 @@ class Evaluator():
         llh_event = llh[data[:,self.xi] > self.threshold]
         return llh_all, llh_non_event, llh_event
     
-    def compute_llh_tensor(self, checkpoint: Path) -> torch.Tensor:
+    def compute_llh_tensor(self, checkpoint: Path) -> Tuple[torch.Tensor, Path]:
         # Load flow module from checkpoint
         flow_module = self._load_checkpoint(checkpoint)
         llh = flow_module.compute_llh(self.test)

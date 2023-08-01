@@ -3,7 +3,7 @@ sys.path.append('src')
 
 import utils
 import parameters
-from flow_module import FlowModule, FlowModuleWeighted, FlowModuleSampled
+from flow_module import FlowModule, FlowModuleFixedWeight, FlowModuleSampled
 
 import click
 import numpy as np
@@ -71,7 +71,7 @@ def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str)
 
 def create_module(dataset, features, dataset_type, args, stage):
     if dataset_type in ['weighted', 'sampled_weighted']:
-        return FlowModuleWeighted(features=features, dataset=dataset, args=args, stage=stage)
+        return FlowModuleFixedWeight(features=features, dataset=dataset, args=args, stage=stage)
     else:
         return FlowModule(features=features, dataset=dataset, args=args, stage=stage)
     

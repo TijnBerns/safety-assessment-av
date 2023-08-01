@@ -84,7 +84,7 @@ class FlowModule(pl.LightningModule):
         self.xi = dataset.xi
         self.threshold = dataset._threshold
         # self.event_weight = dataset.weight
-        self.event_weight = weight
+        self.weight = weight
                 
         # Metrics
         self.train_mean_log_density: MeanMetric = MeanMetric()
@@ -222,7 +222,7 @@ class FlowModule(pl.LightningModule):
         else:
             raise ValueError        
         
-class FlowModuleWeighted(FlowModule):
+class FlowModuleFixedWeight(FlowModule):
     def __init__(self,  
                  features: int,
                  dataset: CustomDataset,
@@ -237,7 +237,7 @@ class FlowModuleWeighted(FlowModule):
         
     def _compute_weighted_loss(self, non_event, event):
         # constrained_weight = torch.nn.functional.sigmoid(self.event_weight)
-        constrained_weight = self.event_weight
+        constrained_weight = self.weight
         return - torch.mean(torch.cat((non_event, constrained_weight * event)))
     
     
@@ -250,7 +250,7 @@ class FlowModuleWeighted(FlowModule):
         # regularization_term = self.alpha * (self.event_weight - constrained_weight) ** 2
         # weighted_log_density = torch.mean(non_event) + constrained_weight * torch.mean(event)
         # loss = - weighted_log_density + regularization_term
-        constrained_weight = self.event_weight
+        constrained_weight = self.weight
         loss = self._compute_weighted_loss(non_event, event)
         
         self.train_mean_log_density(-loss)
@@ -267,14 +267,13 @@ class FlowModuleWeighted(FlowModule):
         super().optimizer_step(*args, **kwargs)
         
         
-class FlowModuleTrainableWeight(FlowModule):
+class FlowModuleWeighted(FlowModule):
     def __init__(self, config) -> None:
         # super().__init__(features=features, args=args, dataset=dataset, stage=stage, weight=weight)
         super().__init__(features=config["features"], args=config["args"], dataset=config["dataset"], stage=config["stage"], weight=config["weight"])
         
         # self.event_weight = torchtorch.logit(torch.tensor(self.event_weight))
-        self.normal_dataloader = DataLoader(Gas(split='normal_sampled'), batch_size=self.batch_size, shuffle=False)
-        self.event_weight = torch.nn.Parameter(torch.tensor(self.event_weight))
+        # self.normal_dataloader = DataLoader(Gas(split='normal_sampled'), batch_size=self.batch_size, shuffle=False)
         # self.weight_optimizer = torch.optim.Adam([self.event_weight], lr=0.005)
     
     def _compute_weighted_loss(self, non_event, event, weight):
@@ -286,7 +285,7 @@ class FlowModuleTrainableWeight(FlowModule):
         return - torch.mean(torch.cat(((1-weight) * non_event, weight * event))), weight
     
     def _compute_inverse_weighted_loss(self, non_event, event):
-        constrained_weight = self.event_weight
+        constrained_weight = self.weight
         return - torch.mean(torch.cat((constrained_weight) * non_event, (1-constrained_weight) * event)), constrained_weight
     
     def training_step(self, batch, batch_idx) -> torch.Tensor:
@@ -294,7 +293,7 @@ class FlowModuleTrainableWeight(FlowModule):
         non_event = self.forward(batch[batch[:,self.xi] <= self.threshold])
         event = self.forward(batch[batch[:,self.xi] > self.threshold])
         
-        loss, _ = self._compute_weighted_loss(non_event, event, self.event_weight)
+        loss, _ = self._compute_weighted_loss(non_event, event, self.weight)
         log_density = torch.mean(torch.cat((non_event, event)))
         
         self.train_mean_log_density(log_density)
@@ -304,7 +303,7 @@ class FlowModuleTrainableWeight(FlowModule):
         self.log("log_density", log_density, batch_size=self.batch_size, prog_bar=True)
         self.log('event', torch.mean(event))
         self.log('non_event', torch.mean(non_event))
-        self.log('event_weight', self.event_weight)
+        self.log('event_weight', self.weight)
         return loss
     
     # def _compute_llh(self, dataloader):

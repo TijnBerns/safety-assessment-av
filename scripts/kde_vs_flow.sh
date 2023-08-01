@@ -2,16 +2,20 @@
 #SBATCH --account=cseduproject
 #SBATCH --partition=csedu
 #SBATCH --qos=csedu-large
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:0
 #SBATCH --mem=2G
-#SBATCH --cpus-per-task=2
-#SBATCH --time=47:00:00
-#SBATCH --output=./logs/slurm/%J.out
-#SBATCH --error=./logs/slurm/%J.out
+#SBATCH --cpus-per-task=1
+#SBATCH --time=48:00:00
+#SBATCH --output=./_logs_tmp/%J.out
+#SBATCH --error=./_logs_tmp/%J.out
 
 project_dir=.
 
 # Train on train-full with no speaker change symbols or ids
 source "$project_dir"/venv/bin/activate
+mkdir /scratch/tberns/tmp
+
+
 export DATAROOT='/scratch/tberns/data'
-srun python "$project_dir"/src/flow/experiments/kde_vs_flow.py
+export TMPDIR='/scratch/tberns/tmp'
+srun python "$project_dir"/src/flow/experiments/kde_vs_flow.py --seed=$1 

@@ -1,16 +1,18 @@
-img/
-related_work/
-notebooks/
-estimates*
-estimates/
+# Project directories
+_logs_tmp
+img
+related_work
+notebooks
+estimates
 checkpoints
 ray_results
 lightning_logs
-logs/
+logs
 temp.py
-data
+
 results.csv
 src/experiments/flow/fine_tune.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

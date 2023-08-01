@@ -4,7 +4,7 @@ sys.path.append('src/data')
 
 import utils
 import parameters
-from flow_module import FlowModule, FlowModuleWeighted
+from flow_module import FlowModule, FlowModuleFixedWeight
 
 import click
 import numpy as np
@@ -43,9 +43,9 @@ def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str)
     if dataset_type == 'all':
         train = DataLoader(dataset(split='_train'), shuffle=True, batch_size=batch_size, num_workers=2)
         val = DataLoader(dataset(split='_val'), shuffle=False, batch_size=batch_size, num_workers=2)
-        return train, None, val
+        return train, val
     
-    elif dataset_type == 'split':
+    elif dataset_type == 'normal':
         train_normal = DataLoader(dataset(split='normal_train'), shuffle=True, batch_size=batch_size, num_workers=2)
         train_event = DataLoader(dataset(split='event_train'), shuffle=True, batch_size=batch_size, num_workers=2)
         return train_normal, train_event, val
@@ -54,11 +54,10 @@ def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str)
         normal = dataset(split='normal_train').data 
         event = dataset(split='event_train').data  
         train = DataLoader(np.concatenate((normal, event)), shuffle=True, batch_size=batch_size, num_workers=2)
-        return train, None, val 
+        return train, val 
     
-    elif dataset_type == 'sampled_split':
+    elif dataset_type == 'sampled_normal':
         train_normal = DataLoader(dataset(split='normal_sampled'), shuffle=True, batch_size=batch_size, num_workers=2)
-        train_event = DataLoader(dataset(split='event_sampled'), shuffle=True, batch_size=batch_size, num_workers=2)
         val = DataLoader(dataset(split='val_sampled'), shuffle=False, batch_size=batch_size, num_workers=2)
         return train_normal, train_event, val
     
@@ -67,13 +66,13 @@ def create_data_loaders(dataset:CustomDataset, batch_size:int, dataset_type:str)
         event = dataset(split='event_sampled').data  
         train = DataLoader(np.concatenate((normal, event)), shuffle=True, batch_size=batch_size, num_workers=2)
         val = DataLoader(dataset(split='val_sampled'), shuffle=False, batch_size=batch_size, num_workers=2)
-        return train, None, val 
+        return train, val 
     else: 
         raise ValueError
 
 def create_module(dataset: CustomDataset, features: int, dataset_type: str, weight:float, args: parameters.Parameters, stage: int):
     if dataset_type in ['weighted', 'sampled_weighted']:
-        return FlowModuleWeighted(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
+        return FlowModuleFixedWeight(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
     else:
         return FlowModule(features=features, dataset=dataset, args=args, stage=stage, weight=weight)
    
@@ -84,6 +83,16 @@ def create_module(dataset: CustomDataset, features: int, dataset_type: str, weig
 @click.option('--dataset_type', type=str, default='sampled_weighted') 
 @click.option('--weight', type=float, default=None) 
 def train(dataset:str, dataset_type: str, weight: float):    
+    """Train a normalizing flow on provided dataset and dataset type.
+
+    Args:
+        dataset (str): Dataset to train on. Default: gas. Choices: power, gas, miniboone, hepmass.
+        dataset_type (str): The type of flow network and dataset that is used. Default: sampled_weighted
+        Choices: all (train on the entire UCI dataset), split (train on event and normal data),
+        
+        weight (float): The weight that is used in case of weighted training. Default: None.
+        If none the weight is computed using Equation 2.4.10 of the report.
+    """
     # Set seeds for reproducibility 
     utils.seed_all(2023)
     dataset_str = dataset
@@ -91,17 +100,16 @@ def train(dataset:str, dataset_type: str, weight: float):
     # Construct data loaders
     args = parameters.get_parameters(dataset)
     dataset = parameters.get_dataset(dataset)
-    normal_train, _, val = create_data_loaders(dataset, args.batch_size, dataset_type)
-    print(f"\n\n!!!!!!!!!!!{normal_train.dataset.data.shape}!!!!!!!!!!!!!!!!\n\n")
+    train_loader, _, val_loader = create_data_loaders(dataset, args.batch_size, dataset_type)
     
     # Get device
     device, version = utils.set_device()
     
     # create model
     if weight is None:
-        weight = data.preprocess.compute_event_weight_np(data=normal_train.dataset, xi=dataset().xi, threshold=dataset().threshold)
+        weight = data.preprocess.compute_event_weight_np(data=train_loader.dataset, xi=dataset().xi, threshold=dataset().threshold)
         
-    features = normal_train.dataset.data.shape[1]
+    features = train_loader.dataset.data.shape[1]
     flow_module = create_module(features=features, dataset=dataset(), dataset_type=dataset_type, args=args, stage=1, weight=weight)
 
     
@@ -114,7 +122,7 @@ def train(dataset:str, dataset_type: str, weight: float):
                                  callbacks=[checkpointer],
                                  log_every_n_steps=args.logging_interval,
                                  accelerator=device)
-    trainer.fit(flow_module, normal_train, val)
+    trainer.fit(flow_module, train_loader, val_loader)
     
     # Evaluate models (computes log likelihood tensor)
     test_set = 'all' if 'sampled' in dataset_type else 'normal'     
