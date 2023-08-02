@@ -14,14 +14,14 @@ class CustomDataset(Dataset):
         else:
             self.path = self.root / (split + '.npy')
             self.data = np.load(self.path)
-        
+
         self.load_stats()
 
     def load_data():
         raise NotImplementedError
-    
+
     def load_stats(self):
-        try:   
+        try:
             self.stats = load_json(Path(self.root) / 'stats.json')
             self.xi = self.stats['Xi']
             self.threshold = self.stats['threshold']
@@ -31,16 +31,14 @@ class CustomDataset(Dataset):
             print('Cannot initialize stats yet, try preprocessing data first.')
             return None
         return self.stats
-        
+
     def __getitem__(self, index):
         raise self.data[index]
-    
+
     def __len__(self):
         return len(self.data)
-    
+
 
 def split_data(data: np.ndarray, frac: float = 0.9):
     split_idx = int(frac * len(data))
     return data[:split_idx], data[split_idx:]
-
-
