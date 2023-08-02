@@ -2,13 +2,12 @@
 This repository contains the code used in the experiments described in my thesis titled TITLE.
 
 
-## Setting up the virtual environment and ownloading the data 
-A virtual environment can be setup by running `./scripts/setup_venv.sh`. This will create a virtual environment with all packages listed in `requirements.txt`. 
+## Setting up the virtual environment and downloading the data 
+A virtual environment can be set up by running `./scripts/setup_venv.sh`. This will create a virtual environment in the root directory named `statml` with all packages listed in `requirements.txt`. To activate the virtual environment run `source venv/bin/activate`.
 
-Before downloading data and running experiments, ensure the `DATAROOT` variable is set to a path you want the the data downloaded to:\
-```export DATAROOT=$path```
+Before downloading data and running experiments, ensure the `DATAROOT` variable is set to a path you want the data to be downloaded to. This can be done via ```export DATAROOT=$path```.
 
-Having set the environment variable, the data can be downloaded and preprocessed by running `python src/data/preprocess.py --download=True` in the virtual/conda environment. 
+Having set the environment variable and created a virtual environment, the data can be downloaded and preprocessed by running `python src/data/preprocess.py --download=True` in the virtual/conda environment. 
 
 
 ## Training a flow network
