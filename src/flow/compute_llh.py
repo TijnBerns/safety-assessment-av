@@ -19,49 +19,43 @@ def write_results(path: Path, row) -> None:
     utils.save_csv(path, df)
     return
 
-# @click.command()
-# @click.option('--version', type=str)
-# @click.option('--true', type=str)
-# @click.option('--dataset', default='gas')
+@click.command()
+@click.option('--version', type=str)
+@click.option('--true', type=str)
+@click.option('--dataset', default='gas')
 def main(version: str, true: str, dataset: str) -> Dict[str, float]:
     utils.seed_all(2023)
     evaluator = evaluate.Evaluator(dataset=dataset, version=version)
 
     # Load checkpoints
     best = evaluate.get_llh(version)
-    true, _ = evaluate.get_pl_checkpoint(true)
-    true = evaluate.get_best_checkpoint(true)
+    if True is not None:
+        true, _ = evaluate.get_pl_checkpoint(true)
+        true = evaluate.get_best_checkpoint(true)
     
     return compute_metrics(evaluator, true, best, version)
     
 def compute_metrics(evaluator, true, best, version):
     
     # Initialize list for storing results
-    mse = np.zeros((len(best), 3))
+    mse = np.ones((len(best), 3)) * np.inf
     llh = np.zeros_like(mse)
-    llr = np.zeros_like(mse)
 
     # Compute log likelihood ratios
     for i, llh_tensor in enumerate(best):
-        try:
             print(f'Evaluating {llh_tensor}')
             llh[i] = evaluator.compute_llh(llh_tensor)
-            mse[i] = evaluator.compute_mse(true, llh_tensor)
-            llr[i] = evaluator.compute_lr(true, llh_tensor)
-        except Exception as e:
-            print(f'Could not evaluate probably due to correpted file.\n{e}')
-
+            if true is not None:
+                mse[i] = evaluator.compute_mse(true, llh_tensor)
+            
     llh =  np.array(llh)[np.unique(np.nonzero(llh)[0])]
     mse = np.array(mse)[np.unique(np.nonzero(mse)[0])]
-    llr = np.array(llr)[np.unique(np.nonzero(llr)[0])]
             
     # Aggregate results
     mse_mean = np.mean(mse, axis=0)
     mse_std = np.std(mse, axis=0)
     llh_mean = np.mean(llh, axis=0)
     llh_std = np.std(llh, axis=0)
-    llr_mean = np.mean(llr, axis=0)
-    llr_std = np.std(llr, axis=0)
     row = [{
         'version': version,
         'mse_all': mse_mean[0],

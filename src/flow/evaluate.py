@@ -22,48 +22,6 @@ import torch
 
 from utils import LIGHTNING_LOGS
 
-def sample_normal(flow_module: FlowModule, num_samples: int, save: str= None):
-    """Sample normal data from a flow module
-
-    Args:
-        flow_module (FlowModule): The module from which sampels are drawn.
-        num_samples (int): Number of samples to draw.
-        save (str, optional): The path to which sampled data is save. If None, samples are not saved. Defaults to None.
-
-    Returns:
-        np.ndarray: The sampled data.
-    """
-    sampled_data = flow_module.sample(num_samples).numpy()
-    
-    if save is not None:
-        utils.save_np(save, sampled_data)
-    
-    return sampled_data
-
-def sample_event(flow_module: FlowModule, num_samples: int, threshold:float, xi: int, save: str=None) -> np.ndarray:
-    """Sample event data from a flow module.
-
-    Args:
-        flow_module (FlowModule): The module from which samples are drawn.
-        num_samples (int): Number of samples to draw.
-        threshold (float): The threshold determining whether a sample is an event or not.
-        xi (int): The variable on which the threshold is set.
-        save (str, optional): The path to which sampled data is save. If None, samples are not saved. Defaults to None.
-
-    Returns:
-        np.ndarray: The sampled data.
-    """
-    sampled_data = torch.empty((0, flow_module.features))
-    while sampled_data.shape[0] < num_samples:
-        temp = flow_module.sample(num_samples)
-        sampled_data = torch.cat((sampled_data, temp[temp[:,xi] > threshold]), 0)
-        print(f'{sampled_data.shape[0]} / {num_samples}')
-    sampled_data = sampled_data[:num_samples].numpy()
-    
-    if save is not None:
-        utils.save_np(save, sampled_data)
-    
-    return sampled_data
 
 def get_ray_checkpoint(path: Path):
     ckpts = list(path.rglob('*best.ckpt'))
