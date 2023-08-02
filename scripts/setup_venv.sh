@@ -6,16 +6,13 @@ SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # set variable to path of root of this project
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# We want to create the virtual environment in the scratch directory as /scratch/
-# is a local disk (unique for each node) and therefore more performant.
-#
-# We make sure a valid directory to store virtual environments exists
-# under the path /scratch/YOUR_USERNAME/virtual_environments
-#
 # If you call this script on your local computer (e.g, hostname != cn99, cn47 or cn48)
 # the virtual environment will just be created in the root directory of this project.
-
-VENV_DIR=/scratch/$USER/virtual_environments/statml
+if [ "$HOSTNAME" != "cn87" ] && [ "$HOSTNAME" != "cn47" ] && [ "$HOSTNAME" != "cn48" ]; then
+  VENV_DIR=$PROJECT_DIR/venv
+else
+  VENV_DIR=/scratch/$USER/virtual_environments/statml
+fi
 
 mkdir -p "$VENV_DIR"
 

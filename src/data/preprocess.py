@@ -7,6 +7,7 @@ import wget
 import click
 import numpy as np
 from pathlib import Path
+import tarfile
 
 from base import CustomDataset, split_data
 from miniboone import MiniBoone
@@ -17,11 +18,32 @@ from hepmass import Hepmass
 DOWNLOAD_URL = 'https://zenodo.org/record/1161203/files/data.tar.gz?download=1'
 
 def download_data():
+    def members_start(member: tarfile.TarInfo):
+        return member.name.startswith(("data/miniboone")) or \
+            member.name.startswith(("data/hepmass")) or \
+            member.name.startswith(("data/gas")) or \
+            member.name.startswith(("data/power"))
+    
+    def get_members(tar: tarfile.TarFile):
+        l = len("data/")
+        for member in tar.getmembers():
+            if members_start(member):
+                member.path = member.path[l:]
+                yield member
     try:
-        path = os.environ['DATAROOT']
-        Path(path).mkdir(parents=True, exist_ok=True)
-        print(f"Downloading data to {path}")
+        # Get datapath from os environment
+        path = Path(os.environ['DATAROOT'])
+        path.mkdir(parents=True, exist_ok=True)
+        
+        # Download data
+        print(f"Downloading data to {path}...")
         wget.download(DOWNLOAD_URL, out=path)
+
+        # Extract tar file
+        print('Extracting tar files...')
+        ar = tarfile.open(path / 'data.tar.gz')
+        ar.extractall(path=path, members=get_members(ar))
+        ar.close()
     except KeyError:
         print('Could not download data, make sure the DATAROOT environment variable is set via export.')
 
@@ -72,7 +94,6 @@ def save_splits(dataset: CustomDataset):
     threshold_unnormalized = set_threshold(all_data, xi)
     
     # 4. Split train data into normal and event
-    # TODO: Check what fraction we want to use here
     train_normal, train_event = split_data(train, frac=0.2)
     train_event = train_event[train_event[:, xi] > threshold_unnormalized]
     test_normal = test[test[:, xi] <= threshold_unnormalized]
@@ -140,10 +161,9 @@ def save_splits(dataset: CustomDataset):
 @click.option('--download', type=bool, default=False)
 def main(download: bool):
     utils.seed_all(2023)
-    
     if download:
         download_data()
-    
+        
     print('Preprocessing: MiniBoone')
     save_splits(MiniBoone())
     
@@ -156,8 +176,6 @@ def main(download: bool):
     print('Preprocessing: Hepmass')
     save_splits(Hepmass())
     
-    # print('preprocessing: BSDS300')
-    # save_splits(BSDS300Dataset())
 
     
 if __name__ == "__main__":
