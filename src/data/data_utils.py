@@ -12,7 +12,8 @@ def compute_p_edge(data: np.ndarray, threshold: float, dim: int = -1) -> float:
     Args:
         data (np.ndarray): Data of which the fraction of event data is computed
         threshold (float): Threshold that determines whether an observation is an event or not.
-        dim (int, optional): Number of the variable that determines whether an observation is an event or not. Defaults to -1.
+        dim (int, optional): Number of the variable that determines whether an observation is an 
+        event or not. Defaults to -1.
 
     Returns:
         float: _description_
@@ -27,7 +28,8 @@ def determine_threshold(
 
     Args:
         frac_edge (float): _description_
-        distribution (scipy.stats.rv_continuous, optional): Scipy stats distribution. Defaults to scipy.stats.norm().
+        distribution (scipy.stats.rv_continuous, optional): Scipy stats distribution. Defaults to
+        scipy.stats.norm().
 
     Returns:
         float: Computed threshold.
@@ -101,7 +103,8 @@ def filter_data(
 def combine_data(
     normal_data: np.ndarray, edge_data: np.ndarray, threshold: float, p_edge: float
 ):
-    """Combines normal and edge data retaining the fraction of edge cases by duplicating samples from the normal data."""
+    """Combines normal and edge data retaining the fraction of edge cases by duplicating samples 
+    from the normal data."""
     if p_edge == 0:
         print("WARNING: estimated p_edge equals 0, thus data cannot be combined.")
         return normal_data
@@ -137,7 +140,8 @@ class EmpericalCDF:
 
         Args:
             data (np.ndarray): 1D numpy array containing the data
-            num_bins (int, optional): The number of bins used when constructing the CDF. Defaults to 10 * len(data)
+            num_bins (int, optional): The number of bins used when constructing the CDF. 
+            Defaults to 10 * len(data)
         """
 
         if num_bins is None:

@@ -6,12 +6,12 @@ import h5py
 
 class BSDS300Dataset(CustomDataset):
     def __init__(self, split=None, frac=None):
-        super().__init__(Path(os.environ['DATAROOT']) / 'BSDS300', split)
-        self.dataset_str = 'bsds300'
+        super().__init__(Path(os.environ["DATAROOT"]) / "BSDS300", split)
+        self.dataset_str = "bsds300"
 
     def load_data(self):
-        file = h5py.File(self.root / 'BSDS300.hdf5', 'r')
-        return file['train'], file['validation'], file['test']
+        file = h5py.File(self.root / "BSDS300.hdf5", "r")
+        return file["train"], file["validation"], file["test"]
 
     def __getitem__(self, index):
         return self.data[index]
