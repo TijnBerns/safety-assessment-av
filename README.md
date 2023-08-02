@@ -10,7 +10,7 @@ Having set the environment variable and created a virtual environment, the data 
 
 
 ## Training a flow network
-To train a normalizing flow run `python src/flow/train.py --dataset=$DATASET --dataset_type=$DATASET_TYPE`. The `dataset` argument specifies which dataset to train on. Possible choices for this argument are gas, power, miniboone, and hepmass. The `dataset_type` argument specifies on what type of data the normalizing flow is trained on. The following strings can be provided to this argument:
+To train a normalizing flow run `python src/flow/train.py --dataset=$DATASET --dataset_type=$DATASET_TYPE`. The `dataset` argument specifies which dataset to train on. Possible choices for this argument are gas, power, miniboone, and hepmass. The `dataset_type` argument specifies what type of data the normalizing flow is trained on. The following strings can be provided to this argument:
 - `all`: Train on the entire training set of the UCI dataset. This option is used to obtain the normalizing flows representing the true densities.
 - `normal`: Train on normal data only. This option is used as our baseline when evaluating using the log-likelihood.
 - `weighted`: Train on normal and event data. This option is used in our weighted-training approach when evaluating using the log-likelihood.
