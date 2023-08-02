@@ -1,3 +1,7 @@
+"""
+Module used for downloading and preprocssing UCI data (Power, Hepmass, Miniboone, and Gas)
+"""
+
 import sys
 
 sys.path.append("src")

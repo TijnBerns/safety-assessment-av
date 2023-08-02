@@ -1,3 +1,7 @@
+"""
+Module containing BSDS300 dataset class used in normalizing flow experiments.
+"""
+
 import os
 from pathlib import Path
 from base import CustomDataset

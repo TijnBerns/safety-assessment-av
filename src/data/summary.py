@@ -1,3 +1,7 @@
+"""
+Plotting functionalities for summary statistics of UCI data
+"""
+
 import sys
 
 sys.path.append("src")

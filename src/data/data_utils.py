@@ -1,3 +1,7 @@
+"""
+Various data utilities used throughout the experiments.
+"""
+
 from typing import Tuple, List
 import numpy as np
 import scipy.stats

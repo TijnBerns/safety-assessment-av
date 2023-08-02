@@ -1,3 +1,7 @@
+"""
+Module containing base dataset class used in normalizing flow experiments.
+"""
+
 import numpy as np
 from pathlib import Path
 from utils import load_json
@@ -41,5 +45,16 @@ class CustomDataset(Dataset):
 
 
 def split_data(data: np.ndarray, frac: float = 0.9):
+    """Splits data provided in np array into two parts based on provided fraction.
+
+    Args:
+        data (np.ndarray): Data that is split.
+        frac (float, optional): Fraction of data that is kept in the first dataset split. 
+        Defaults to 0.9.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: Two splits, one containing frac percent of data, one 
+        containing (1-frac) percent of data
+    """
     split_idx = int(frac * len(data))
     return data[:split_idx], data[split_idx:]

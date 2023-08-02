@@ -1,3 +1,7 @@
+"""
+Module containing MINIBOONE dataset class used in normalizing flow experiments.
+"""
+
 import sys
 
 sys.path.append("src")

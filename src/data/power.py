@@ -2,6 +2,10 @@ import sys
 
 sys.path.append("src")
 
+"""
+Module containing POWER dataset class used in normalizing flow experiments.
+"""
+
 import os
 from pathlib import Path
 import numpy as np
