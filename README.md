@@ -1,5 +1,5 @@
 # Improving Safety Assessment Of AVs By Incorporating Event Data
-This repository contains the code used in the experiments described in my thesis titled TITLE.
+This repository contains the code used in the experiments described in my master thesis titled "Improving Safety Assessment Of AVs By Incorporating Event Data".
 
 ## Setting up the virtual environment and downloading the data 
 A virtual environment can be set up by running `./scripts/setup_venv.sh`. This will create a virtual environment in the root directory named `statml` with all packages listed in `requirements.txt`. To activate the virtual environment run `source venv/bin/activate`.
