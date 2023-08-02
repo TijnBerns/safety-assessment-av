@@ -6,8 +6,8 @@
 #SBATCH --mem=2G
 #SBATCH --cpus-per-task=1
 #SBATCH --time=48:00:00
-#SBATCH --output=./_logs_tmp/%J.out
-#SBATCH --error=./_logs_tmp/%J.out
+#SBATCH --output=./logs/slurm/%J.out
+#SBATCH --error=./logs/slurm/%J.out
 
 project_dir=.
 
