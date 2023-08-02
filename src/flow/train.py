@@ -129,15 +129,17 @@ def train(dataset:str, dataset_type: str, weight: float):
     # Construct data loaders
     args = parameters.get_parameters(dataset)
     dataset = parameters.get_dataset(dataset)
-    train_loader, _, val_loader = create_data_loaders(dataset, args.batch_size, dataset_type)
+    train_loader, val_loader = create_data_loaders(dataset, args.batch_size, dataset_type)
     
     # Get device
     device, version = utils.set_device()
     
     # create model
     if weight is None:
-        weight = data.preprocess.compute_event_weight_np(data=train_loader.dataset, xi=dataset().xi, threshold=dataset().threshold)
-        
+        normal_data = dataset(split='normal_train')
+        event_data = dataset(split='event_train')
+        weight = data.preprocess.compute_event_weight(normal=normal_data, event=event_data, xi=dataset().xi, threshold=dataset()._threshold)
+
     features = train_loader.dataset.data.shape[1]
     flow_module = create_module(features=features, dataset=dataset(), dataset_type=dataset_type, args=args, stage=1, weight=weight)
 

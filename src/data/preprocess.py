@@ -1,14 +1,29 @@
 import sys
 sys.path.append('src')
 
+import os
+import utils
+import wget
+import click
 import numpy as np
+from pathlib import Path
+
 from base import CustomDataset, split_data
 from miniboone import MiniBoone
 from power import Power
 from gas import Gas
 from hepmass import Hepmass
-from bsds300 import BSDS300Dataset
-import utils
+
+DOWNLOAD_URL = 'https://zenodo.org/record/1161203/files/data.tar.gz?download=1'
+
+def download_data():
+    try:
+        path = os.environ['DATAROOT']
+        Path(path).mkdir(parents=True, exist_ok=True)
+        print(f"Downloading data to {path}")
+        wget.download(DOWNLOAD_URL, out=path)
+    except KeyError:
+        print('Could not download data, make sure the DATAROOT environment variable is set via export.')
 
 def select_variable(data):
     corr = np.abs(np.corrcoef(data.T))
@@ -29,24 +44,15 @@ def normalize(data: np.ndarray, mu=None, std=None):
     return normalized_data, mu, std
 
 def compute_event_weight(normal, event, xi, threshold):
-    p_event = 0.08
-    n_norm = np.sum(normal[:,xi] <= threshold)
-    n_event = len(event) + len(normal) - n_norm
-    return ((p_event * n_norm) / (n_event)) / (1 - p_event)
+    n_non_event = np.sum(normal[:,xi] <= threshold)
+    n_event = len(event) + len(normal) - n_non_event
+    p_event = (len(normal) - n_non_event) / len(normal)
+    return ((p_event * n_non_event) / (n_event)) / (1 - p_event)
 
-def compute_event_weight_np(data, xi, threshold):
-    p_event = 0.08
-    non_event = np.sum(data[:,xi] <= threshold)
-    event = np.sum(data[:,xi] > threshold)
-    return ((p_event * non_event) / (event)) / (1 - p_event)
 
 def load_data(dataset):
-    if type(dataset) == BSDS300Dataset:
-        train, val, test = dataset.load_data() 
-    else:
-        train, test = dataset.load_data()
-        train, val = split_data(train)
-        
+    train, test = dataset.load_data()
+    train, val = split_data(train)
     return train, val, test
     
     
@@ -130,9 +136,13 @@ def save_splits(dataset: CustomDataset):
     }
     utils.save_json(dataset.root / 'stats.json', stats)
     
-
-def main():
+@click.command()
+@click.option('--download', type=bool, default=False)
+def main(download: bool):
     utils.seed_all(2023)
+    
+    if download:
+        download_data()
     
     print('Preprocessing: MiniBoone')
     save_splits(MiniBoone())
