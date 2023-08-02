@@ -19,13 +19,13 @@ Dr. Ir. Tom Claassen
 ## Setting up the virtual environment and downloading the data 
 A virtual environment can be set up by running `./scripts/setup_venv.sh`. This will create a virtual environment in the root directory named `statml` with all packages listed in `requirements.txt`. To activate the virtual environment run `source venv/bin/activate`.
 
-Before downloading data and running experiments, ensure the `DATAROOT` variable is set to a path you want the data to be downloaded to. This can be done via ```export DATAROOT=$path```.
+Before downloading data and running experiments, ensure the `DATAROOT` variable is set to a path you want the data to be downloaded to. This can be done via ```export DATAROOT=$PATH```.
 
 Having set the environment variable and created a virtual environment, the data can be downloaded and preprocessed by running `python src/data/preprocess.py --download=True` in the virtual/conda environment. 
 
 
 ## Training a flow network
-During training the 50 best performing models are saved to `lightning_logs/version_VERSION`. 
+During training the 50 best performing models are saved to `lightning_logs/version_$VERSION`. 
 At the end of the training procedure, a tensor (in `.pt` format) is saved containing the log-likelihood values of the test data.
 
 
