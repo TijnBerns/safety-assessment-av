@@ -1,6 +1,7 @@
 import sys
-sys.path.append('src')
-sys.path.append('src/flow')
+
+sys.path.append("src")
+sys.path.append("src/flow")
 
 import numpy as np
 import scipy.stats
@@ -13,8 +14,6 @@ from torch.utils.data import DataLoader
 
 import pandas as pd
 from nflows import flows
-
-
 
 
 import click
@@ -37,18 +36,16 @@ import utils
 from pathlib import Path
 
 
-
 def main(version):
     ckpt, _ = flow.evaluate.get_pl_checkpoint(version)
     ckpt = flow.evaluate.get_best_checkpoint(ckpt)
-    
-    evaluator = flow.evaluate.Evaluator('gas')
+
+    evaluator = flow.evaluate.Evaluator("gas")
     flow_module = evaluator._load_checkpoint(ckpt)
     flow: flows.Flow = flow_module.flow
-    
+
     breakpoint()
+
 
 if __name__ == "__main__":
     main(253784)
-
-    

@@ -1,7 +1,7 @@
-from torch.utils.data import Dataset
 import numpy as np
-from utils import load_json
 from pathlib import Path
+from utils import load_json
+from torch.utils.data import Dataset
 
 
 class CustomDataset(Dataset):
@@ -18,7 +18,7 @@ class CustomDataset(Dataset):
 
         self.load_stats()
 
-    def load_data():
+    def load_data(self):
         raise NotImplementedError
 
     def load_stats(self):

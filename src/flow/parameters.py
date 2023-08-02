@@ -1,5 +1,6 @@
 import sys
-sys.path.append('src')
+
+sys.path.append("src")
 
 from dataclasses import dataclass
 from data.base import CustomDataset
@@ -9,10 +10,9 @@ from data.gas import Gas
 from data.hepmass import Hepmass
 from data.bsds300 import BSDS300Dataset
 
-    
 
 @dataclass
-class Parameters():
+class Parameters:
     # Num workers
     num_workers = 2
     # The batch size
@@ -44,24 +44,25 @@ class Parameters():
     logging_interval = 50
 
 
-
 @dataclass
 class PowerParameters(Parameters):
-    batch_size=512
-    num_flow_steps=10
+    batch_size = 512
+    num_flow_steps = 10
     num_transform_blocks = 2
-    hidden_features=256
-    num_bins=8
-    dropout_probability=0.0
-    
+    hidden_features = 256
+    num_bins = 8
+    dropout_probability = 0.0
+
+
 @dataclass
 class GasParameters(Parameters):
-    batch_size=512
-    num_flow_steps=10
+    batch_size = 512
+    num_flow_steps = 10
     num_transform_blocks = 2
-    hidden_features=256
-    num_bins=8
-    dropout_probability=0.1
+    hidden_features = 256
+    num_bins = 8
+    dropout_probability = 0.1
+
 
 @dataclass
 class HepmassParameters(Parameters):
@@ -71,7 +72,8 @@ class HepmassParameters(Parameters):
     hidden_features = 128
     num_bins = 8
     dropout_probability = 0.2
-    
+
+
 @dataclass
 class MiniBooneParameters(Parameters):
     learning_rate_stage_1 = 0.0003
@@ -82,6 +84,7 @@ class MiniBooneParameters(Parameters):
     hidden_features = 32
     num_bins = 4
     dropout_probability = 0.2
+
 
 @dataclass
 class BSDS300Parameters(Parameters):
@@ -94,32 +97,34 @@ class BSDS300Parameters(Parameters):
     num_bins = 8
     dropout_probability = 0.2
 
+
 def get_dataset(dataset: str) -> CustomDataset:
-    if dataset == 'power':
+    if dataset == "power":
         return Power
-    elif dataset == 'hepmass':
+    elif dataset == "hepmass":
         return Hepmass
-    elif dataset == 'gas':
+    elif dataset == "gas":
         return Gas
-    elif dataset =='bsds300':
+    elif dataset == "bsds300":
         return BSDS300Dataset
-    elif dataset == 'miniboone':
+    elif dataset == "miniboone":
         return MiniBoone
     else:
-        print(f'Got unexpected dataset string: {dataset}')
+        print(f"Got unexpected dataset string: {dataset}")
         raise ValueError
 
-def get_parameters(dataset:str) -> Parameters:
-    if dataset == 'power':
+
+def get_parameters(dataset: str) -> Parameters:
+    if dataset == "power":
         return PowerParameters
-    elif dataset == 'hepmass':
+    elif dataset == "hepmass":
         return HepmassParameters
-    elif dataset == 'gas':
+    elif dataset == "gas":
         return GasParameters
-    elif dataset =='bsds300':
+    elif dataset == "bsds300":
         return BSDS300Parameters
-    elif dataset == 'miniboone':
+    elif dataset == "miniboone":
         return MiniBooneParameters
     else:
-        print(f'Got unexpected dataset string: \'{dataset}\'')
+        print(f"Got unexpected dataset string: '{dataset}'")
         raise ValueError

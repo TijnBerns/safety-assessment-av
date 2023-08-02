@@ -8,29 +8,25 @@ from typing import List, Union
 
 
 @dataclass
-class SharedParameters():
+class SharedParameters:
     # Seed
     seed = 2023
 
     # Path variables
-    path_estimates = Path('/home/tberns/safety-assessment-av/estimates') # For run on cluster
+    path_estimates = Path(
+        "/home/tberns/safety-assessment-av/estimates"
+    )  # For run on cluster
     # path_estimates = Path(
     #     '/home/tijn/CS/Master/SA_Automated_Vehicles/safety-assessment-av/estimates')  # For local run
 
     # Probability of observing an event
-    p_event = [
-        0.02,
-        0.04,
-        0.08,
-        0.16,
-        0.32
-    ]
+    p_event = [0.02, 0.04, 0.08, 0.16, 0.32]
 
     LABELS = {
-        'num_norm': '$N_\\textrm{norm}$',
-        'num_event': '$N_\\textrm{event}$',
-        'p_event': '$p_\\textrm{event}$',
-        'correlation': '$\\rho$'
+        "num_norm": "$N_\\textrm{norm}$",
+        "num_event": "$N_\\textrm{event}$",
+        "p_event": "$p_\\textrm{event}$",
+        "correlation": "$\\rho$",
     }
 
     FIGSIZE = (3.3, 2.0)
@@ -38,14 +34,10 @@ class SharedParameters():
 
 @dataclass
 class UVParameters(SharedParameters):
-    """Class containing the variables used troughout the experiments
-    """
+    """Class containing the variables used troughout the experiments"""
+
     # The number of normal observations
-    num_normal = [
-        100,
-        1000,
-        10_000
-    ]
+    num_normal = [100, 1000, 10_000]
 
     # The number of event observations
     num_event = [
@@ -55,26 +47,10 @@ class UVParameters(SharedParameters):
     ]
 
     # Probability of observing an event
-    p_event = [
-        0.02,
-        0.04,
-        0.08,
-        0.16,
-        0.32
-    ]
+    p_event = [0.02, 0.04, 0.08, 0.16, 0.32]
 
     # The correlation between X_1 and X_2
-    correlation = [
-        0.1,
-        0.2,
-        0.3,
-        0.4,
-        0.5,
-        0.6,
-        0.7,
-        0.8,
-        0.9
-    ]
+    correlation = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
     # Value used for epsilon support
     epsilon = 0.01
@@ -102,23 +78,32 @@ class UVParameters(SharedParameters):
 
     def get_distributions(distribution_str: str, correlation: float):
         distributions = {
-            'gaussian': [scipy.stats.norm(0, 2), scipy.stats.norm()],
-            'gumbel': [scipy.stats.gumbel_r(), scipy.stats.norm()],
-            'beta': [scipy.stats.beta(0.5, 0.5), scipy.stats.norm()],
-            't': [scipy.stats.t(1), scipy.stats.norm()]
+            "gaussian": [scipy.stats.norm(0, 2), scipy.stats.norm()],
+            "gumbel": [scipy.stats.gumbel_r(), scipy.stats.norm()],
+            "beta": [scipy.stats.beta(0.5, 0.5), scipy.stats.norm()],
+            "t": [scipy.stats.t(1), scipy.stats.norm()],
         }
 
-        c_target = np.array([[1.0, correlation,], [correlation,  1.0]])
+        c_target = np.array(
+            [
+                [
+                    1.0,
+                    correlation,
+                ],
+                [correlation, 1.0],
+            ]
+        )
         uv_distribution = distributions[distribution_str][0]
         mv_distribution = dist.Gaussian_Copula(
-            c_target, distributions[distribution_str])
+            c_target, distributions[distribution_str]
+        )
         return uv_distribution, mv_distribution
 
 
 @dataclass
 class MVParameters(SharedParameters):
-    """Class containing the variables used troughout the experiments involving multivariate distributions
-    """
+    """Class containing the variables used troughout the experiments involving multivariate distributions"""
+
     # The number of normal observations
     num_normal = [1000]
 
@@ -145,8 +130,7 @@ class MVParameters(SharedParameters):
         mean = np.array([6, 3])
         cov = np.array([[2.0, 0.5], [0.5, 1.0]])
 
-        distributions = [scipy.stats.norm(
-            mean[i], cov[i, i]) for i in range(len(mean))]
+        distributions = [scipy.stats.norm(mean[i], cov[i, i]) for i in range(len(mean))]
         uv_distribution = scipy.stats.multivariate_normal(mean, cov)
         mv_distribution = scipy.stats.multivariate_normal(mean, cov)
 
