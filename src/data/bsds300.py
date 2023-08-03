@@ -1,10 +1,13 @@
 """
 Module containing BSDS300 dataset class used in normalizing flow experiments.
 """
+import sys
+
+sys.path.append("src")
 
 import os
 from pathlib import Path
-from base import CustomDataset
+from data.base import CustomDataset
 import h5py
 
 
