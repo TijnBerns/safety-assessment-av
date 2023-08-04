@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 from data.base import CustomDataset, split_data
 import pandas as pd
+import pickle
 
 
 class Gas(CustomDataset):

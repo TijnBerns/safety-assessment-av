@@ -9,6 +9,8 @@ ray_results
 lightning_logs
 logs
 temp.py
+.vscode/
+
 
 results.csv
 src/experiments/flow/fine_tune.py
