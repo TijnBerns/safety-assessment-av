@@ -1,3 +1,7 @@
+""" 
+Utility functions and constants.
+"""
+
 import os
 from typing import Tuple, Any, Union
 import torch
@@ -19,6 +23,11 @@ LIGHTNING_LOGS = "/scratch/tberns/lightning_logs"
 
 
 def seed_all(seed: int):
+    """Seeds torch, python random, and np random given the provided seed.
+
+    Args:
+        seed (int): Seed that is used.
+    """
     torch.manual_seed(seed)
     random.seed(seed)
     np.random.seed(seed)

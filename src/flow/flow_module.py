@@ -1,3 +1,7 @@
+""" 
+Pytorch lightning modules of nflows flow networks
+"""
+
 import sys
 
 sys.path.append("src")

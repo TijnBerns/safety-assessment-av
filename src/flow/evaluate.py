@@ -1,5 +1,5 @@
 """ 
-Evaluation of flow modules.
+Module containing Evaluator class used for evaluating normalizing flows based on llh and mse.
 """
 
 import sys

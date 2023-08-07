@@ -1,3 +1,7 @@
+""" 
+Module containing evaluation pipeline. Evaluates flow modules based on MSE and LLH.
+"""
+
 import sys
 
 sys.path.append("src")

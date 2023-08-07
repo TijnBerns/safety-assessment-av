@@ -46,12 +46,12 @@ def download_data():
 
         # Download data
         print(f"Downloading data to {path}...")
-        wget.download(DOWNLOAD_URL, out=path)
+        wget.download(DOWNLOAD_URL, out=str(path))
 
         # Extract tar file
         print("Extracting tar files...")
         ar = tarfile.open(path / "data.tar.gz")
-        ar.extractall(path=path, members=get_members(ar))
+        ar.extractall(path=str(path), members=get_members(ar))
         ar.close()
     except KeyError:
         print(

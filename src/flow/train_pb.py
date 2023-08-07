@@ -1,3 +1,7 @@
+""" 
+Module containing population based training pipeline for normalizing flows.
+"""
+
 import sys
 
 sys.path.append("src")

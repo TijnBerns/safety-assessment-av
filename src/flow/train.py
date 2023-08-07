@@ -1,3 +1,7 @@
+""" 
+Module containing main training pipeline for training normalizing flows
+"""
+
 import sys
 
 sys.path.append("src")
