@@ -48,7 +48,7 @@ def get_true_version(dataset_str):
 @click.option("--num_gpus", type=int)
 @click.option("--num_samples", type=int, default=4)
 @click.option(
-    "--storage_path", type=str, default="/home/tberns/safety-assessment-av/ray_results"
+    "--storage_path", type=str, default=f"/scratch/{os.environ['USER']}/ray_results"
 )
 def train_pb(
     dataset: str,

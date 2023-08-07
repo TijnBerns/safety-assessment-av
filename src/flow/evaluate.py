@@ -1,3 +1,7 @@
+""" 
+Evaluation of flow modules.
+"""
+
 import sys
 
 sys.path.append("src")

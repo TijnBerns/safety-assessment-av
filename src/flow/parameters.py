@@ -1,3 +1,7 @@
+""" 
+Module containing hyperparamter configurations of each of the considered UCI datasets
+"""
+
 import sys
 
 sys.path.append("src")

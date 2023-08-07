@@ -1,3 +1,7 @@
+""" 
+Module containing sampling functionality of normalizing flows.
+"""
+
 import sys
 
 sys.path.append("src")
