@@ -61,7 +61,7 @@ def exp0(path: Path, results_files="*corr_0.5*results.csv"):
         label="$2.5-97.5$ percentile",
     )
     axs.legend()
-    axs.set_xlabel("$\\mathbf{x}$")
+    axs.set_xlabel("$X_1$")
     axs.set_ylabel("improved SD / baseline SD")
     plt.tight_layout()
     plt.savefig(f"img/kde_sd_{path.name}.pgf")
@@ -77,7 +77,7 @@ def exp0(path: Path, results_files="*corr_0.5*results.csv"):
         alpha=0.25,
         label="$2.5-97.5$ percentile",
     )
-    axs.set_xlabel("$\\mathbf{x}$")
+    axs.set_xlabel("$X_1$")
     axs.set_ylabel("improved MSE / baseline MSE")
     axs.legend()
     plt.tight_layout()
@@ -123,7 +123,7 @@ def exp1():
 
     for tp in ["SD", "MSE"]:
         _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
-        axs.set_xlabel("$\\mathbf{x}$")
+        axs.set_xlabel("$X_1$")
         axs.set_ylabel(f"improved {tp} / baseline {tp}")
         for label, f in zip(labels, files):
             df = pd.read_csv(f)
@@ -138,7 +138,7 @@ def exp2(root: Path):
     N = [100, 1000, 10000]
     for tp in ["SD", "MSE"]:
         _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
-        axs.set_xlabel("$\\mathbf{x}$")
+        axs.set_xlabel("$X_1$")
         axs.set_ylabel(f"improved {tp} / baseline {tp}")
         for n in N:
             files = list(
@@ -168,7 +168,7 @@ def exp3(root: Path):
     files.sort(key=f_sort)
     for tp in ["SD", "MSE"]:
         _, axs = plt.subplots(1, 1, figsize=FIGSIZE)
-        axs.set_xlabel("$\\mathbf{x}$")
+        axs.set_xlabel("$X_1$")
         axs.set_ylabel(f"improved {tp} / baseline {tp}")
         for f in files:
             p_edge, num_normal, num_edge, _ = variables_from_filename(f.name)
@@ -189,7 +189,7 @@ def exp4(path: Path):
     axs.plot(df["x"], df["improved_mse"] / df["baseline_mse"], label="MSE")
     axs.plot(df["x"], df["improved_std"] / df["baseline_std"], label="SD")
     axs.legend()
-    axs.set_xlabel("$\\mathbf{x}$")
+    axs.set_xlabel("$X_1$")
     plt.tight_layout()
     plt.savefig(f"img/{path.parts[-3]}.pgf")
 
@@ -202,7 +202,7 @@ def exp4(path: Path):
     min_y = (
         min(min(df["true"]), min(df["baseline_mean"]), min(df["improved_mean"])) - 0.05
     )
-    axs.set_xlabel("$\\mathbf{x}$")
+    axs.set_xlabel("$X_1$")
     axs.set_ylabel(f"$f(x)$")
     if max_y > 1:
         axs.set_ylim(bottom=min_y, top=2)

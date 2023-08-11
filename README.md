@@ -15,7 +15,7 @@ To train a normalizing flow run `python src/flow/train.py --dataset=$DATASET --d
 - `normal`: Train on normal data only. This option is used as our baseline when evaluating using the log-likelihood.
 - `weighted`: Train on normal and event data. This option is used in our weighted-training approach when evaluating using the log-likelihood.
 - `normal_sampled`: Train on sampled normal data. This option is used as our baseline when evaluating using the MSE.
-- `weighted_sampled`: rain on sampled normal and sampled event data. This option is used in our weighted-training approach when evaluating using the MSE.
+- `weighted_sampled`: Train on sampled normal and sampled event data. This option is used in our weighted-training approach when evaluating using the MSE.
   
 NOTE: We can only train on sampled data once data has been sampled. 
 
